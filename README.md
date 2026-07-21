@@ -7,9 +7,14 @@ hiçbir barındırma/veritabanı maliyeti yoktur.
 
 ## Özellikler
 
-- **PDF'ten otomatik veri çıkarma** (pdf.js, tamamen yerel): rapor bilgileri,
-  grup/numune sonuçları, çökme değerleri, silindir/küp eşdeğerlik esası.
-  Taranmış belge/fotoğraf için elle giriş.
+- **Otomatik veri çıkarma, tamamen yerel:**
+  - Dijital PDF → pdf.js metin katmanı (anında, güvenilir).
+  - **Tarama (CamScanner vb.) ve fotoğraf (JPG/PNG/WEBP) → yerleşik OCR**
+    (Tesseract.js + Türkçe dil verisi, WebAssembly): metin katmanı yoksa
+    otomatik devreye girer; sayfa başına 5-20 sn sürer ve sonuçlar mutlaka
+    belgeyle karşılaştırılmalıdır (arayüz bunu zorunlu kılar).
+  - Çıkarılanlar: rapor bilgileri, grup/numune sonuçları, çökme değerleri,
+    silindir/küp eşdeğerlik esası.
 - **Deterministik değerlendirme motoru** (`docs/engine.js`):
 
   | Kontrol | Dayanak |
@@ -37,10 +42,12 @@ hiçbir barındırma/veritabanı maliyeti yoktur.
 docs/            Yayınlanan statik uygulama (GitHub Pages: /docs)
   engine.js        Değerlendirme motoru (deterministik)
   pdfread.js       Yerel PDF veri çıkarma (pdf.js metin katmanı)
+  ocr.js           Tarama/fotoğraf OCR hattı (Tesseract.js, yerel)
   report.js        Akademik rapor üreticisi + kaynakça
   report.css       Rapor dizgisi (siyah-beyaz, A4)
   app.js, index.html, style.css
-  vendor/          pdf.js (Mozilla, Apache-2.0)
+  vendor/          pdf.js (Mozilla, Apache-2.0) + tesseract.js (Apache-2.0)
+                   + Türkçe OCR verisi (~15 MB; ilk OCR kullanımında yüklenir)
 app/             Python referans motoru (test oracle'ı — yayınlanmaz)
 tests/           Python testleri + Node çapraz doğrulama testleri
 ```
@@ -55,6 +62,7 @@ gerekir; internet bağlantısı gerekmez).
 ```
 python -m pytest tests -q        # Python referans motoru (28 test)
 node tests/js/run_tests.mjs      # JS motoru + PDF okuma + rapor (18 test)
+node tests/js/ocr_test.mjs       # OCR hattı uçtan uca (npm install gerektirir)
 ```
 
 JS motoru, Python referans motorundan üretilen `tests/vectors.json`

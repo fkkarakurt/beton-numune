@@ -2,6 +2,8 @@
 "use strict";
 
 import { CONCRETE_CLASSES, evaluate } from "./engine.js";
+import { getOcrWorker, imageFileToCanvas, ocrCanvas,
+         renderPdfPageToCanvas } from "./ocr.js";
 import { linesFromTextContent, parseReportFromPages } from "./pdfread.js";
 import { buildReportHTML, standaloneReportHTML } from "./report.js";
 
@@ -44,10 +46,12 @@ dz.addEventListener("drop", (e) => {
 });
 $("file-input").addEventListener("change", (e) => addFiles(e.target.files));
 
+const IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
+
 function addFiles(list) {
   for (const f of list) {
-    if (!f.name.toLowerCase().endsWith(".pdf")) {
-      alert(`${f.name}: yalnızca PDF okunabilir. Fotoğraf/tarama verilerini elle girin.`);
+    if (!f.name.toLowerCase().endsWith(".pdf") && !IMAGE_EXT.test(f.name)) {
+      alert(`${f.name}: desteklenmeyen dosya türü. PDF, JPG, PNG veya WEBP yükleyin.`);
       continue;
     }
     selectedFiles.push(f);
@@ -95,43 +99,109 @@ async function readPdfPages(file) {
   return pages;
 }
 
+/* Tek PDF: önce metin katmanı, bulunamazsa OCR (tarama/CamScanner). */
+async function extractFromPdf(file, setStatus) {
+  const pdfjs = await getPdfjs();
+  const data = new Uint8Array(await file.arrayBuffer());
+  const doc = await pdfjs.getDocument({ data }).promise;
+
+  const textPages = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p);
+    const tc = await page.getTextContent();
+    textPages.push(linesFromTextContent(tc.items));
+  }
+  let textRep = null;
+  try { textRep = parseReportFromPages(textPages); } catch { textRep = null; }
+  if (textRep && textRep.gruplar.length) return textRep;
+
+  // Metin katmanı yok ya da yetersiz (CamScanner vb. görüntü tabanlı PDF)
+  setStatus(`${file.name}: metin katmanı bulunamadı — OCR ile okunuyor…`);
+  const worker = await getOcrWorker(setStatus);
+  const ocrPages = [];
+  for (let p = 1; p <= doc.numPages; p++) {
+    setStatus(`${file.name}: sayfa ${p}/${doc.numPages} OCR ile okunuyor… ` +
+              "(sayfa başına 5-20 sn)");
+    const page = await doc.getPage(p);
+    ocrPages.push(await ocrCanvas(worker, await renderPdfPageToCanvas(page)));
+  }
+  const ocrRep = parseReportFromPages(ocrPages, { ocr: true });
+  // Metin katmanı başlık verebilmişse (ör. yalnız filigran değilse) boş
+  // alanları oradan tamamla
+  if (textRep) {
+    for (const k of Object.keys(ocrRep)) {
+      if (k !== "gruplar" && k !== "okuma_notlari" &&
+          (ocrRep[k] === null || ocrRep[k] === undefined) &&
+          textRep[k] !== null && textRep[k] !== undefined) {
+        ocrRep[k] = textRep[k];
+      }
+    }
+  }
+  return ocrRep;
+}
+
+/* Fotoğraflar: hepsi tek raporun sayfaları kabul edilir, birlikte OCR'lanır. */
+async function extractFromImages(files, setStatus) {
+  const worker = await getOcrWorker(setStatus);
+  const pages = [];
+  for (let i = 0; i < files.length; i++) {
+    setStatus(`Fotoğraf ${i + 1}/${files.length} OCR ile okunuyor… ` +
+              "(fotoğraf başına 5-20 sn)");
+    pages.push(await ocrCanvas(worker, await imageFileToCanvas(files[i])));
+  }
+  return parseReportFromPages(pages, { ocr: true });
+}
+
+function mergeReports(reps, notes) {
+  let merged = null;
+  for (const rep of reps) {
+    if (!merged) { merged = rep; continue; }
+    const existing = new Set(merged.gruplar.map((g) => g.group_no));
+    for (const g of rep.gruplar) {
+      if (!existing.has(g.group_no)) merged.gruplar.push(g);
+    }
+    for (const k of Object.keys(rep)) {
+      if (k !== "gruplar" && k !== "okuma_notlari" &&
+          (merged[k] === null || merged[k] === undefined) &&
+          rep[k] !== null) merged[k] = rep[k];
+    }
+    notes.push(...rep.okuma_notlari);
+  }
+  return merged;
+}
+
 $("btn-extract").addEventListener("click", async () => {
   const btn = $("btn-extract"), st = $("extract-status");
   btn.disabled = true;
-  st.textContent = "PDF okunuyor…";
+  const setStatus = (t) => { st.textContent = t; };
+  setStatus("Belge okunuyor…");
   $("extract-notes").classList.add("hidden");
   try {
-    let merged = null;
+    const pdfs = selectedFiles.filter((f) => f.name.toLowerCase().endsWith(".pdf"));
+    const images = selectedFiles.filter((f) => IMAGE_EXT.test(f.name));
+    const reps = [];
     const notes = [];
-    for (const f of selectedFiles) {
-      let rep;
+    for (const f of pdfs) {
       try {
-        rep = parseReportFromPages(await readPdfPages(f));
+        reps.push(await extractFromPdf(f, setStatus));
       } catch (e) {
         notes.push(`${f.name}: ${e.message}`);
-        continue;
-      }
-      if (!merged) {
-        merged = rep;
-      } else {
-        const existing = new Set(merged.gruplar.map((g) => g.group_no));
-        for (const g of rep.gruplar) {
-          if (!existing.has(g.group_no)) merged.gruplar.push(g);
-        }
-        for (const k of Object.keys(rep)) {
-          if (k !== "gruplar" && k !== "okuma_notlari" &&
-              (merged[k] === null || merged[k] === undefined) &&
-              rep[k] !== null) merged[k] = rep[k];
-        }
-        notes.push(...rep.okuma_notlari);
       }
     }
-    if (!merged) throw new Error(notes.join(" | ") || "PDF okunamadı.");
+    if (images.length) {
+      try {
+        reps.push(await extractFromImages(images, setStatus));
+      } catch (e) {
+        notes.push("Fotoğraflar: " + e.message);
+      }
+    }
+    const merged = mergeReports(reps, notes);
+    if (!merged) throw new Error(notes.join(" | ") || "Belge okunamadı.");
     merged.okuma_notlari = [...new Set([...merged.okuma_notlari, ...notes])];
     fillFromExtraction(merged);
-    st.textContent = "✓ Veriler forma aktarıldı. Lütfen belgeyle karşılaştırıp doğrulayın!";
+    setStatus("✓ Veriler forma aktarıldı. Lütfen belgeyle karşılaştırıp doğrulayın!");
   } catch (e) {
-    st.textContent = "✗ " + e.message;
+    setStatus("✗ " + e.message);
   } finally {
     btn.disabled = selectedFiles.length === 0;
   }

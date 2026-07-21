@@ -1,0 +1,18 @@
+{
+  "name": "beton-numune",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Yapı denetim ofisleri için beton deney raporu uygunluk değerlendirme sistemi — ücretsiz, sunucusuz statik web uygulaması.",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/js/run_tests.mjs",
+    "test:ocr": "node tests/js/ocr_test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fkkarakurt/beton-numune.git"
+  },
+  "devDependencies": {
+    "tesseract.js": "^5.1.1"
+  }
+}

@@ -25,11 +25,11 @@ Tüm işlem tarayıcınızda gerçekleşir.">
 <main id="view-new" class="container no-print">
 
   <section class="card">
-    <h2><span class="stepno">1</span>Laboratuvar Raporu PDF'i <span class="muted">(isteğe bağlı — elle de girilebilir)</span></h2>
+    <h2><span class="stepno">1</span>Laboratuvar Raporu <span class="muted">(PDF, tarama veya fotoğraf — isteğe bağlı, elle de girilebilir)</span></h2>
     <div id="dropzone" class="dropzone">
-      <p><strong>Rapor PDF dosyasını buraya sürükleyin</strong></p>
-      <p class="muted">ya da tıklayıp seçin — çok sayfalı PDF desteklenir</p>
-      <input type="file" id="file-input" multiple accept=".pdf" hidden>
+      <p><strong>Rapor PDF'ini, taramasını veya fotoğraflarını buraya sürükleyin</strong></p>
+      <p class="muted">ya da tıklayıp seçin — PDF, JPG, PNG, WEBP (çok sayfalı/çoklu dosya desteklenir)</p>
+      <input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" hidden>
     </div>
     <ul id="file-list" class="file-list"></ul>
     <div class="row gap">
@@ -37,9 +37,11 @@ Tüm işlem tarayıcınızda gerçekleşir.">
       <span id="extract-status" class="status"></span>
     </div>
     <p class="note">Okuma işlemi tamamen tarayıcınızda yapılır; belge hiçbir
-      sunucuya gönderilmez. Yalnızca <strong>dijital (metin katmanlı) PDF</strong>
-      raporlar okunabilir — taranmış belge/fotoğraflardaki verileri forma elle
-      girin ve çıkan verileri her durumda belgeyle karşılaştırın.</p>
+      sunucuya gönderilmez. <strong>Dijital PDF</strong> anında ve güvenilir
+      okunur. <strong>Tarama (CamScanner vb.) ve fotoğraflar</strong> OCR ile
+      okunur: daha yavaştır (sayfa başına 5-20 sn) ve yanlış okuma olasılığı
+      vardır — çıkan değerleri belgeyle <u>mutlaka tek tek karşılaştırın</u>.
+      Net, dik açıyla ve iyi ışıkta çekilmiş görüntüler çok daha doğru okunur.</p>
     <ul id="extract-notes" class="note hidden"></ul>
   </section>
 

@@ -100,8 +100,14 @@ export function linesFromTextContent(items) {
 /* ------------------------------------------------------------------ */
 /* Satırlardan numune gruplarını çıkarma                                */
 /* ------------------------------------------------------------------ */
-function parseSpecimenRows(allLines, notes) {
+function parseSpecimenRows(allLines, notes, ocr = false) {
   const rows = [];
+  // 28 günlük dayanım: tek ondalık basamaklı, virgüllü sayı.
+  // (Kırılma yükü 2, yoğunluk 3 ondalıklı olduğundan karışmaz.)
+  // OCR modunda virgül sıkça nokta okunduğundan nokta da kabul edilir;
+  // ≥5 MPa alt sınırı "1.0" gibi süsleme sayılarını yine eler.
+  const candRe = ocr ? /(?<![\d.,])(\d{1,3}[.,]\d)(?![\d])/g
+                     : /(?<![\d.,])(\d{1,3},\d)(?![\d])/g;
   for (const line of allLines) {
     const m = KALIP_RE.exec(line);
     if (!m) continue;
@@ -109,10 +115,9 @@ function parseSpecimenRows(allLines, notes) {
     // gibi çökme sınıfı aralıkları böylece elenir.
     if (Number(m[2]) > 12) continue;
     const tail = line.slice(m.index + m[0].length);
-    // 28 günlük dayanım: tek ondalık basamaklı, virgüllü sayı.
-    // (Kırılma yükü 2, yoğunluk 3 ondalıklı olduğundan karışmaz.)
-    const cands = [...tail.matchAll(/(?<![\d.,])(\d{1,3},\d)(?![\d])/g)]
-      .map((c) => strength(numTr(c[1]))).filter((v) => v !== null);
+    const cands = [...tail.matchAll(candRe)]
+      .map((c) => strength(numTr(c[1].replace(".", ","))))
+      .filter((v) => v !== null);
     if (!cands.length) continue;
     const group = m[1];
     const kalip = `${m[1]}-${m[2]}`;
@@ -139,16 +144,17 @@ function parseSpecimenRows(allLines, notes) {
 /* ------------------------------------------------------------------ */
 /**
  * pages: her sayfa için satır dizisi (string[][]).
+ * opts.ocr: satırlar OCR'dan geldiyse true (toleranslar gevşetilir).
  * Dönen nesne app tarafındaki form alanlarıyla eşleşir.
  */
-export function parseReportFromPages(pages) {
+export function parseReportFromPages(pages, opts = {}) {
+  const ocr = Boolean(opts.ocr);
   const notes = [];
   const allLines = pages.flat();
   const text = allLines.join("\n");
   if (text.trim().length < 40) {
     throw new Error(
-      "PDF'te okunabilir metin katmanı yok (muhtemelen tarama/fotoğraf). " +
-      "Yalnızca dijital PDF raporlar okunabilir — verileri elle girin.");
+      "PDF'te okunabilir metin katmanı yok (muhtemelen tarama/fotoğraf).");
   }
   const normText = norm(text);
 
@@ -222,7 +228,7 @@ export function parseReportFromPages(pages) {
   }
 
   // Numune grupları
-  const rawRows = parseSpecimenRows(allLines, notes);
+  const rawRows = parseSpecimenRows(allLines, notes, ocr);
   const groups = new Map();
   const seenKalip = new Set();
   for (const r of rawRows) {
@@ -242,8 +248,12 @@ export function parseReportFromPages(pages) {
   }
   rep.gruplar = [...groups.values()];
   if (rep.gruplar.length) {
-    notes.push("Değerler satır düzeninden okunmuştur — laboratuvar raporuyla " +
-               "mutlaka karşılaştırın.");
+    notes.push(ocr
+      ? "Belge OCR (optik karakter tanıma) ile okunmuştur; yanlış okuma " +
+        "olasılığı yüksektir — TÜM değerleri laboratuvar raporuyla tek tek " +
+        "karşılaştırın."
+      : "Değerler satır düzeninden okunmuştur — laboratuvar raporuyla " +
+        "mutlaka karşılaştırın.");
   }
   return rep;
 }
