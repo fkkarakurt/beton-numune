@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beton Numune Değerlendirme</title>
+<meta name="description" content="Yapı denetim ofisleri için beton deney raporu
+uygunluk değerlendirmesi — TS 500 m.3.4, TS EN 206, TS 13515 Ek B1.
+Tüm işlem tarayıcınızda gerçekleşir.">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="report.css">
+</head>
+<body>
+<header class="topbar no-print">
+  <div>
+    <h1>BETON NUMUNE DEĞERLENDİRME</h1>
+    <p>TS 500 m.3.4 · TS EN 206 · TS 13515 Ek B1 — Yapı Denetim | Tüm işlem tarayıcınızda gerçekleşir, hiçbir veri gönderilmez.</p>
+  </div>
+  <nav>
+    <button id="nav-new" class="nav-btn active">Değerlendirme</button>
+    <button id="nav-records" class="nav-btn">Kayıtlar</button>
+  </nav>
+</header>
+
+<main id="view-new" class="container no-print">
+
+  <section class="card">
+    <h2><span class="stepno">1</span>Laboratuvar Raporu PDF'i <span class="muted">(isteğe bağlı — elle de girilebilir)</span></h2>
+    <div id="dropzone" class="dropzone">
+      <p><strong>Rapor PDF dosyasını buraya sürükleyin</strong></p>
+      <p class="muted">ya da tıklayıp seçin — çok sayfalı PDF desteklenir</p>
+      <input type="file" id="file-input" multiple accept=".pdf" hidden>
+    </div>
+    <ul id="file-list" class="file-list"></ul>
+    <div class="row gap">
+      <button id="btn-extract" class="btn primary" disabled>Verileri Çıkar</button>
+      <span id="extract-status" class="status"></span>
+    </div>
+    <p class="note">Okuma işlemi tamamen tarayıcınızda yapılır; belge hiçbir
+      sunucuya gönderilmez. Yalnızca <strong>dijital (metin katmanlı) PDF</strong>
+      raporlar okunabilir — taranmış belge/fotoğraflardaki verileri forma elle
+      girin ve çıkan verileri her durumda belgeyle karşılaştırın.</p>
+    <ul id="extract-notes" class="note hidden"></ul>
+  </section>
+
+  <section class="card">
+    <h2><span class="stepno">2</span>Rapor ve Şantiye Bilgileri</h2>
+    <div class="grid3">
+      <label>Rapor No <input id="f-rapor_no"></label>
+      <label>Laboratuvar <input id="f-lab_adi"></label>
+      <label>Lab. İzin Belge No <input id="f-lab_izin_belge_no"></label>
+      <label>YİBF No <input id="f-yibf_no"></label>
+      <label>Yapı Denetim Kuruluşu <input id="f-deney_isteyen"></label>
+      <label>Müteahhit <input id="f-muteahhit"></label>
+      <label>Yapı Sahibi <input id="f-yapi_sahibi"></label>
+      <label>Beton Üreticisi <input id="f-uretici_firma"></label>
+      <label>Şantiye Adresi <input id="f-santiye_adresi"></label>
+      <label>Pafta / Ada / Parsel <input id="f-pafta_ada_parsel"></label>
+      <label>Yapı Elemanı <input id="f-yapi_elemani" placeholder="TEMEL, PERDE, DÖŞEME..."></label>
+      <label>Kat / Kot / Blok <input id="f-kat_kot_blok"></label>
+      <label>Numune Boyut / Şekil <input id="f-numune_boyut_sekil" placeholder="10x20 Silindir"></label>
+      <label>Numune Alınış Tarihi <input id="f-alinis_tarihi" type="date"></label>
+      <label>28 Gün Deney Tarihi <input id="f-deney_tarihi" type="date"></label>
+      <label>Değerlendiren <input id="f-degerlendiren" placeholder="Ad Soyad / Unvan"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="stepno">3</span>Beton Sınıfı ve Numune Sonuçları</h2>
+    <div class="grid3">
+      <label>Beton Sınıfı <select id="f-concrete_class"></select></label>
+      <label>Sonuçların Esası
+        <select id="f-basis">
+          <option value="silindir">Silindir (150×300 eşdeğeri) — fck silindir</option>
+          <option value="kup">Küp (150 mm eşdeğeri) — fck küp</option>
+        </select>
+      </label>
+      <label>Beton Miktarı (m³) <input id="f-volume" type="number" min="0" step="1"></label>
+    </div>
+    <p class="note">Laboratuvar raporunun dipnotunu kontrol edin: sonuçlar
+      <em>150×300 silindir dayanımına eşdeğer</em> verilmişse <strong>Silindir</strong>,
+      <em>150 mm küp dayanımına eşdeğer</em> verilmişse <strong>Küp</strong> esası
+      seçilmelidir. Yanlış esas seçimi değerlendirmeyi tümüyle değiştirir.</p>
+
+    <table class="groups-table">
+      <thead>
+        <tr>
+          <th>Grup / Mikser No</th>
+          <th>Numune 1 (MPa)</th>
+          <th>Numune 2 (MPa)</th>
+          <th>Numune 3 (MPa)</th>
+          <th>Çökme Sınıfı</th>
+          <th>Ölçülen Çökme (mm)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="groups-body"></tbody>
+    </table>
+    <div class="row gap">
+      <button id="btn-add-group" class="btn">+ Grup Ekle</button>
+      <button id="btn-clear-groups" class="btn">Grupları Temizle</button>
+    </div>
+  </section>
+
+  <div class="row center">
+    <button id="btn-evaluate" class="btn primary big">DEĞERLENDİR</button>
+  </div>
+
+  <section id="results" class="hidden">
+    <div id="result-strip" class="result-strip"></div>
+    <div class="row gap no-print" style="margin: 0 0 14px">
+      <button id="btn-print" class="btn primary">Yazdır / PDF Kaydet</button>
+      <button id="btn-dl-html" class="btn">Raporu HTML Olarak İndir</button>
+      <button id="btn-dl-json" class="btn">Veriyi JSON İndir</button>
+      <button id="btn-save" class="btn">Tarayıcıya Kaydet</button>
+      <span id="save-status" class="status"></span>
+    </div>
+  </section>
+</main>
+
+<!-- Rapor: ekranda önizleme, yazdırmada tek içerik -->
+<div class="container">
+  <div id="report-holder" class="hidden">
+    <div id="report-paper" class="report-paper"></div>
+  </div>
+</div>
+
+<main id="view-records" class="container no-print hidden">
+  <section class="card">
+    <h2>Kayıtlı Değerlendirmeler <span class="muted">(bu tarayıcıda saklanır)</span></h2>
+    <table class="records-table" id="records-table"></table>
+    <p id="records-empty" class="muted hidden">Henüz kayıt yok.</p>
+    <div class="row gap">
+      <button id="btn-export-all" class="btn">Tümünü Dışa Aktar (JSON)</button>
+      <button id="btn-import" class="btn">İçe Aktar (JSON)</button>
+      <input type="file" id="import-input" accept=".json" hidden>
+    </div>
+    <p class="note">Kayıtlar yalnızca bu tarayıcının yerel deposunda tutulur;
+      hiçbir sunucuya gönderilmez. Bilgisayar/tarayıcı değişiminde taşımak için
+      "Tümünü Dışa Aktar" ile yedek alın.</p>
+  </section>
+</main>
+
+<footer class="no-print">
+  <p>Bu araç yapı denetim personeline yardımcı olmak amacıyla hazırlanmıştır;
+  karar destek niteliğindedir. Nihai değerlendirme sorumluluğu ilgili denetçi
+  mühendise aittir. Dayanaklar: TS 500, TS EN 206, TS 13515, TS EN 12350/12390,
+  TS EN 13791, 4708 sayılı Kanun ve ilgili tebliğler.</p>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

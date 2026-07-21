@@ -1,0 +1,161 @@
+/* Akademik rapor dizgisi — siyah-beyaz, ciddi, ferah. */
+.report-paper {
+  background: #fff;
+  color: #000;
+  font-family: Georgia, "Times New Roman", "Liberation Serif", serif;
+  font-size: 13.5px;
+  line-height: 1.7;
+  padding: 48px 56px;
+  border: 1px solid #999;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, .08);
+}
+.report-paper p { margin: 8px 0; text-align: justify; hyphens: auto; }
+
+/* Başlık bloğu */
+.rp-head {
+  text-align: center;
+  border-bottom: 3px double #000;
+  padding-bottom: 16px;
+  margin-bottom: 28px;
+}
+.rp-head h1 {
+  font-size: 19px;
+  letter-spacing: 1.5px;
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+.rp-sub { font-size: 12px; margin: 0; letter-spacing: .3px; color: #222; }
+
+/* Bölümler */
+.rp-sec { margin: 30px 0; }
+.rp-sec h2 {
+  font-size: 14.5px;
+  letter-spacing: .8px;
+  border-bottom: 1.5px solid #000;
+  padding-bottom: 5px;
+  margin: 30px 0 14px;
+}
+.rp-sec h3 {
+  font-size: 13.5px;
+  margin: 20px 0 8px;
+  letter-spacing: .3px;
+}
+.secref { font-weight: normal; font-size: 11.5px; letter-spacing: 0; }
+
+.cite { font-size: 10.5px; vertical-align: super; white-space: nowrap; }
+
+/* Bilgi tablosu */
+.rp-info { width: 100%; border-collapse: collapse; font-size: 12px; }
+.rp-info td { border: 1px solid #444; padding: 6px 10px; line-height: 1.5; }
+.rp-info td.k { width: 21%; font-weight: bold; background: #f4f4f4; }
+
+/* Genel tablolar */
+.rp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 12px 0;
+}
+.rp-table th, .rp-table td {
+  border: 1px solid #444;
+  padding: 6px 8px;
+  text-align: center;
+  line-height: 1.5;
+}
+.rp-table th { font-weight: bold; background: #f4f4f4; }
+.rp-table td.left, .rp-table th.left { text-align: left; }
+
+/* Denklemler */
+.rp-formula {
+  margin: 14px 8px 14px 28px;
+  font-size: 14px;
+}
+.rp-formula .eq {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 4px 0;
+}
+.rp-formula .eq-no { font-style: normal; color: #000; }
+
+/* İşlem adımları (türetim kutuları) */
+.rp-deriv {
+  margin: 14px 0;
+  padding: 12px 16px;
+  border: 1px solid #bbb;
+  border-left: 4px solid #000;
+  background: #fbfbfb;
+  page-break-inside: avoid;
+}
+.rp-deriv-h { font-weight: bold; margin-bottom: 6px; }
+.rp-step {
+  margin: 5px 0 5px 14px;
+  text-indent: -14px;
+  line-height: 1.65;
+}
+
+.rp-note { font-size: 12.5px; color: #111; }
+
+/* Sonuç kutusu */
+.rp-verdict {
+  border: 2.5px solid #000;
+  padding: 18px 22px;
+  margin: 16px 0;
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.8;
+  page-break-inside: avoid;
+}
+.verdict-word {
+  display: inline-block;
+  font-size: 18px;
+  letter-spacing: 2px;
+  border-bottom: 2px solid #000;
+  padding: 0 6px 2px;
+  margin-top: 4px;
+}
+
+/* Listeler ve kaynakça */
+.rp-list { margin: 8px 0; padding-left: 26px; }
+.rp-list li { margin: 6px 0; text-align: justify; }
+.rp-refs { margin: 8px 0; padding-left: 26px; font-size: 11.5px; }
+.rp-refs li { margin: 6px 0; text-align: justify; line-height: 1.6; }
+
+/* İmza alanı */
+.rp-sign {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 44px;
+  text-align: center;
+  font-size: 12px;
+  page-break-inside: avoid;
+}
+.rp-sign .box { width: 38%; }
+.rp-sign .line { border-top: 1px solid #000; margin-top: 56px; padding-top: 6px; }
+
+.rp-foot {
+  font-size: 10.5px;
+  margin-top: 24px;
+  border-top: 1px solid #666;
+  padding-top: 8px;
+  text-align: justify;
+  line-height: 1.6;
+  color: #222;
+}
+
+/* Yazdırma */
+@media print {
+  .report-paper {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    font-size: 11.5px;
+    line-height: 1.6;
+  }
+  .rp-head h1 { font-size: 16px; }
+  .rp-sec { margin: 18px 0; }
+  .rp-sec h2 { margin: 18px 0 10px; }
+  .rp-deriv { background: #fff; }
+  @page { size: A4; margin: 16mm 15mm; }
+}
