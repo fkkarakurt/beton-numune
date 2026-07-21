@@ -52,11 +52,6 @@ assets/          Örnek rapor/Excel — KİŞİSEL VERİ içerdiğinden depoya d
 `run.bat` → <http://127.0.0.1:8756> (ES modülleri nedeniyle küçük yerel sunucu
 gerekir; internet bağlantısı gerekmez).
 
-## Yayınlama (ücretsiz)
-
-`DEPLOY.md` dosyasına bakın — GitHub Pages veya Cloudflare Pages üzerinde
-kalıcı ücretsiz barındırma + isteğe bağlı özel alan adı.
-
 ## Testler
 
 ```
