@@ -110,6 +110,7 @@
    },
    "en206_passed": true,
    "n_warnings": 0,
+   "n_notes": 0,
    "groups": [
     {
      "group_no": "1",
@@ -312,6 +313,7 @@
    },
    "en206_passed": false,
    "n_warnings": 0,
+   "n_notes": 0,
    "groups": [
     {
      "group_no": "1",
@@ -442,6 +444,7 @@
    },
    "en206_passed": null,
    "n_warnings": 0,
+   "n_notes": 1,
    "groups": [
     {
      "group_no": "1",
@@ -491,6 +494,7 @@
    },
    "en206_passed": null,
    "n_warnings": 0,
+   "n_notes": 1,
    "groups": [
     {
      "group_no": "1",
@@ -556,6 +560,7 @@
    },
    "en206_passed": true,
    "n_warnings": 0,
+   "n_notes": 0,
    "groups": [
     {
      "group_no": "1",
@@ -655,6 +660,7 @@
    },
    "en206_passed": false,
    "n_warnings": 0,
+   "n_notes": 0,
    "groups": [
     {
      "group_no": "1",
@@ -756,6 +762,7 @@
    },
    "en206_passed": false,
    "n_warnings": 0,
+   "n_notes": 0,
    "groups": [
     {
      "group_no": "1",
@@ -823,6 +830,7 @@
    },
    "en206_passed": null,
    "n_warnings": 0,
+   "n_notes": 1,
    "groups": [
     {
      "group_no": "7",
@@ -864,6 +872,7 @@
    "criterion2": null,
    "en206_passed": null,
    "n_warnings": 2,
+   "n_notes": 0,
    "groups": [
     {
      "group_no": "x",
@@ -904,6 +913,7 @@
    "criterion2": null,
    "en206_passed": null,
    "n_warnings": 2,
+   "n_notes": 0,
    "groups": [
     {
      "group_no": "x",
@@ -960,6 +970,7 @@
    },
    "en206_passed": null,
    "n_warnings": 1,
+   "n_notes": 1,
    "groups": [
     {
      "group_no": "1",
@@ -1021,6 +1032,7 @@
    },
    "en206_passed": null,
    "n_warnings": 2,
+   "n_notes": 1,
    "groups": [
     {
      "group_no": "1",
@@ -1030,6 +1042,246 @@
      "mean_initial": 40.5,
      "range_initial": 1,
      "limit_initial": 6.1
+    }
+   ]
+  }
+ },
+ {
+  "name": "tek_yuk_6_numune_bolunme",
+  "input": {
+   "concrete_class": "C30/37",
+   "basis": "kup",
+   "groups": [
+    {
+     "group_no": "1",
+     "values": [
+      45.2,
+      43.8,
+      44.6,
+      46.1,
+      44.9,
+      43.5
+     ]
+    }
+   ],
+   "volume_m3": 20
+  },
+  "expected": {
+   "verdict": "UYGUN",
+   "fck": 37,
+   "fcm": 44.7,
+   "fci_min": 44.5,
+   "n_valid": 2,
+   "n_invalid": 0,
+   "age_days": null,
+   "criterion1": {
+    "applicable": true,
+    "passed": true,
+    "threshold": 38
+   },
+   "criterion2": {
+    "applicable": true,
+    "passed": true,
+    "threshold": 33
+   },
+   "en206_passed": null,
+   "n_warnings": 0,
+   "n_notes": 1,
+   "groups": [
+    {
+     "group_no": "1-A",
+     "valid": true,
+     "mean_final": 44.5,
+     "discarded_value": null,
+     "mean_initial": 44.5,
+     "range_initial": 1.4,
+     "limit_initial": 6.7
+    },
+    {
+     "group_no": "1-B",
+     "valid": true,
+     "mean_final": 44.8,
+     "discarded_value": null,
+     "mean_initial": 44.8,
+     "range_initial": 2.6,
+     "limit_initial": 6.7
+    }
+   ]
+  }
+ },
+ {
+  "name": "tek_yuk_6_numune_ekb1_atma",
+  "input": {
+   "concrete_class": "C30/37",
+   "basis": "kup",
+   "groups": [
+    {
+     "group_no": "1",
+     "values": [
+      45,
+      44.2,
+      44.6,
+      46,
+      36,
+      45.4
+     ]
+    }
+   ]
+  },
+  "expected": {
+   "verdict": "UYGUN",
+   "fck": 37,
+   "fcm": 45.2,
+   "fci_min": 44.6,
+   "n_valid": 2,
+   "n_invalid": 0,
+   "age_days": null,
+   "criterion1": {
+    "applicable": true,
+    "passed": true,
+    "threshold": 38
+   },
+   "criterion2": {
+    "applicable": true,
+    "passed": true,
+    "threshold": 33
+   },
+   "en206_passed": null,
+   "n_warnings": 0,
+   "n_notes": 1,
+   "groups": [
+    {
+     "group_no": "1-A",
+     "valid": true,
+     "mean_final": 44.6,
+     "discarded_value": null,
+     "mean_initial": 44.6,
+     "range_initial": 0.8,
+     "limit_initial": 6.7
+    },
+    {
+     "group_no": "1-B",
+     "valid": true,
+     "mean_final": 45.7,
+     "discarded_value": 36,
+     "mean_initial": 42.5,
+     "range_initial": 10,
+     "limit_initial": 6.4
+    }
+   ]
+  }
+ },
+ {
+  "name": "tek_yuk_8_deger_uyari",
+  "input": {
+   "concrete_class": "C30/37",
+   "basis": "kup",
+   "groups": [
+    {
+     "group_no": "1",
+     "values": [
+      30.1,
+      31.5,
+      44.8,
+      45.2,
+      44.1,
+      45.6,
+      44.4,
+      45
+     ]
+    }
+   ]
+  },
+  "expected": {
+   "verdict": "DEĞERLENDİRİLEMEDİ",
+   "fck": 37,
+   "fcm": null,
+   "fci_min": null,
+   "n_valid": 0,
+   "n_invalid": 1,
+   "age_days": null,
+   "criterion1": null,
+   "criterion2": null,
+   "en206_passed": null,
+   "n_warnings": 3,
+   "n_notes": 0,
+   "groups": [
+    {
+     "group_no": "1",
+     "valid": false,
+     "mean_final": null,
+     "discarded_value": 30.1,
+     "mean_initial": 41.3,
+     "range_initial": 15.5,
+     "limit_initial": 6.2
+    }
+   ]
+  }
+ },
+ {
+  "name": "hacim_b11_c5567_iki_kat",
+  "input": {
+   "concrete_class": "C55/67",
+   "basis": "silindir",
+   "groups": [
+    {
+     "group_no": "1",
+     "values": [
+      58.2,
+      57.5,
+      59.1
+     ]
+    },
+    {
+     "group_no": "2",
+     "values": [
+      60,
+      58.8,
+      59.5
+     ]
+    }
+   ],
+   "volume_m3": 30
+  },
+  "expected": {
+   "verdict": "UYGUN",
+   "fck": 55,
+   "fcm": 58.9,
+   "fci_min": 58.3,
+   "n_valid": 2,
+   "n_invalid": 0,
+   "age_days": null,
+   "criterion1": {
+    "applicable": true,
+    "passed": true,
+    "threshold": 56
+   },
+   "criterion2": {
+    "applicable": true,
+    "passed": true,
+    "threshold": 51
+   },
+   "en206_passed": null,
+   "n_warnings": 1,
+   "n_notes": 0,
+   "groups": [
+    {
+     "group_no": "1",
+     "valid": true,
+     "mean_final": 58.3,
+     "discarded_value": null,
+     "mean_initial": 58.3,
+     "range_initial": 1.6,
+     "limit_initial": 8.7
+    },
+    {
+     "group_no": "2",
+     "valid": true,
+     "mean_final": 59.4,
+     "discarded_value": null,
+     "mean_initial": 59.4,
+     "range_initial": 1.2,
+     "limit_initial": 8.9
     }
    ]
   }

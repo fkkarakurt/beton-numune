@@ -12,6 +12,18 @@ Dayanaklar:
 - TS 13515 Ek B1 — aynı numune takımı (grup) içindeki en büyük ve en küçük
   tekil sonuç farkı, grup ortalamasının %15'ini aşarsa en düşük değer atılır,
   kalan sonuçlarla yeniden kontrol edilir; yine aşıyorsa grup sonucu geçersiz.
+- TS 13515:2021/T1 Ek B1 (2), (3) — bir deney sonucu, bir beton yükünden
+  (transmikser) alınan en az 3 numunelik takımın ortalamasıdır. Şantiyeye aynı
+  gün içerisinde yalnızca BİR beton yükü teslim edilmişse bu yükten asgari
+  2 numune takımı oluşturulur. ÇŞİDB Genelgesi 2022/07: tek yükten toplam
+  8 numune alınır — 2 adedi 7. günde, 6 adedi 28. günde kırılır. Bu motorda
+  tek gruba girilen 6 (veya 3'ün katı) adet 28 günlük sonuç, 3'erli takımlara
+  ayrılarak her takım ayrı deney sonucu (n) sayılır.
+- TS 13515:2021/T1 Çizelge B1.1 — bir günde dökülen beton miktarına göre
+  oluşturulacak asgari numune takımı adedi (0-24 m³: 2; 25-100: 3; 101-150: 4;
+  151-200: 5; 201-250: 6; 251-300: 7; 301-400: 8; 401-500: 9; 501-600: 10;
+  >600: ilave her 200 m³ için +1). Ek B1 (5): C55/67 ve üzeri sınıflarda
+  sayılar iki katına çıkarılır.
 - TS EN 206 Çizelge 14 (bilgi amaçlı ek değerlendirme):
   başlangıç imalatı: fcm >= fck + 4 ; her fci >= fck - 4.
 
@@ -47,6 +59,26 @@ CONCRETE_CLASSES: dict[str, tuple[int, int]] = {
 }
 
 EK_B1_RATIO = 0.15  # TS 13515 Ek B1 %15 kuralı
+
+# TS 13515:2021/T1 Çizelge B1.1 — (bir günde dökülen beton miktarı üst sınırı
+# [m³], oluşturulacak asgari numune takımı adedi)
+CIZELGE_B11 = [(24, 2), (100, 3), (150, 4), (200, 5), (250, 6),
+               (300, 7), (400, 8), (500, 9), (600, 10)]
+
+
+def expected_takim_count(volume_m3: float, fck_cylinder: float) -> int:
+    """TS 13515/T1 Çizelge B1.1'e göre asgari numune takımı (deney sonucu)
+    adedi. Ek B1 (5): C55/67 ve üzeri sınıflarda sayılar iki katına çıkar."""
+    expected = None
+    for limit, count in CIZELGE_B11:
+        if volume_m3 <= limit:
+            expected = count
+            break
+    if expected is None:
+        expected = 10 + ceil((volume_m3 - 600) / 200.0)
+    if fck_cylinder >= 55:
+        expected *= 2
+    return expected
 
 
 def _r1(x: float) -> float:
@@ -191,6 +223,7 @@ class EvaluationResult:
     en206_initial: Optional[CriterionResult] = None   # bilgi amaçlı
     age_days: Optional[int] = None
     warnings: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)   # yöntemsel açıklamalar
     recommendations: list[str] = field(default_factory=list)
     verdict: str = ""                # 'UYGUN' | 'UYGUN DEĞİL' | 'DEĞERLENDİRİLEMEDİ'
 
@@ -226,9 +259,45 @@ def evaluate(
         fck_cylinder=float(fck_cyl), fck_cube=float(fck_cube),
     )
 
+    raw_groups: list[tuple[str, list[float]]] = []
     for i, gdict in enumerate(groups, start=1):
         gno = str(gdict.get("group_no") or i)
-        res.groups.append(evaluate_group(gno, gdict.get("values") or []))
+        vals = [float(v) for v in (gdict.get("values") or []) if v is not None]
+        raw_groups.append((gno, vals))
+
+    # --- TS 13515 Ek B1 (3): tek beton yükü — numune takımlarına ayırma ---
+    # Aynı gün yalnızca bir beton yükü (tek mikser) teslim edilmişse bu yükten
+    # asgari 2 numune takımı oluşturulur; 2022/07 Genelgesi'ne göre toplam 8
+    # numunenin 6 adedi 28 günlük kırıma aittir (2 takım x 3 numune).
+    if len(raw_groups) == 1:
+        gno, vals = raw_groups[0]
+        k = len(vals)
+        if k >= 6 and k % 3 == 0:
+            n_takim = k // 3
+            raw_groups = [(f"{gno}-{chr(ord('A') + j)}", vals[3 * j:3 * j + 3])
+                          for j in range(n_takim)]
+            labels = ", ".join(g for g, _ in raw_groups)
+            res.notes.append(
+                f"Tek beton yükü (mikser {gno}): TS 13515 Ek B1 (3) uyarınca, "
+                "şantiyeye aynı gün içerisinde yalnızca bir beton yükü teslim "
+                "edilmişse bu yükten asgari 2 numune takımı oluşturulur. "
+                f"Girilen {k} adet 28 günlük tekil sonuç, giriş sırasına göre "
+                f"{n_takim} takıma ({labels}) ayrılmış ve her takım ayrı bir "
+                "deney sonucu olarak değerlendirilmiştir (ÇŞİDB Genelgesi "
+                "2022/07: tek yükten toplam 8 numune — 2 adet 7 günlük, "
+                "6 adet 28 günlük).")
+        elif k in (7, 8):
+            res.warnings.append(
+                f"Tek gruba {k} adet tekil sonuç girildi. Tek beton yükünden "
+                "alınan 8 numunenin 2 adedi 7. günde kırılır ve 28 günlük "
+                "uygunluk değerlendirmesine katılmaz (ÇŞİDB Genelgesi "
+                "2022/07). Yalnızca 6 adet 28 günlük sonucu girin; bu durumda "
+                "sonuçlar TS 13515 Ek B1 (3) uyarınca 3'erli 2 takıma "
+                "ayrılarak değerlendirilir. Mevcut giriş tek takım olarak "
+                "işlendi — sonuç güvenilir olmayabilir.")
+
+    for gno, vals in raw_groups:
+        res.groups.append(evaluate_group(gno, vals))
 
     valid = [g for g in res.groups if g.valid]
     invalid = [g for g in res.groups if not g.valid]
@@ -291,6 +360,15 @@ def evaluate(
     res.ts500_conform = bool(c1_ok and ok2)
     res.verdict = "UYGUN" if res.ts500_conform else "UYGUN DEĞİL"
 
+    if n == 1:
+        res.notes.append(
+            "Yalnızca 1 geçerli deney sonucu (numune takımı) mevcuttur. "
+            "TS 13515 B1.3.1 uyarınca, Çizelge B1.1'deki numune alma planına "
+            "göre aynı gün içinde en az 2 deney sonucu elde edilemezse, "
+            "binanın ilgili kat betonu tamamlandıktan sonra elde edilen tüm "
+            "deney sonuçları dikkate alınarak 1. kriterin sağlanıp "
+            "sağlanmadığı ayrıca kontrol edilmelidir.")
+
     # --- TS EN 206 Çizelge 14 başlangıç imalat kriteri (bilgi amaçlı) ---
     if n >= 3:
         thr_i = _r1(fck + 4.0)
@@ -312,14 +390,19 @@ def evaluate(
                 "farklı. Değerlendirme 28 günlük dayanım esasına göredir "
                 "(TS EN 12390-3).")
 
-    # --- Numune sayısı bilgilendirmesi (TS 500 m.3.4) ---
+    # --- Numune sayısı bilgilendirmesi (TS 13515/T1 Çizelge B1.1) ---
     if volume_m3 and volume_m3 > 0:
-        expected = max(3, ceil(volume_m3 / 100.0))
+        expected = expected_takim_count(volume_m3, float(fck_cyl))
+        doubled = (" (C55/67 ve üzeri sınıflarda sayılar iki katına "
+                   "çıkarılır — Ek B1 (5))") if fck_cyl >= 55 else ""
         if len(res.groups) < expected:
             res.warnings.append(
-                f"{volume_m3:.0f} m³ beton için TS 500 m.3.4 esasına göre en az "
-                f"{expected} grup (her 100 m³ veya 450 m² döşeme için 1 grup, "
-                f"işte en az 3 grup) beklenir; raporda {len(res.groups)} grup var.")
+                f"{volume_m3:.0f} m³ beton için TS 13515/T1 Çizelge B1.1 "
+                f"numune alma planına göre en az {expected} numune takımı "
+                f"(grup) oluşturulmalıdır{doubled}; raporda {len(res.groups)} "
+                "takım var. Döküm alanı (m²) kriteri ve numune alınan iki yük "
+                "arasında en az 25 m³ bırakılması koşulu ayrıca kontrol "
+                "edilmelidir.")
 
     # --- Öneriler ---
     if not res.ts500_conform:

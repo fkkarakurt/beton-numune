@@ -60,6 +60,8 @@ for (const v of vectors) {
     assert.equal(res.age_days, e.age_days, "age_days");
     assert.equal(res.warnings.length, e.n_warnings,
                  `uyarı sayısı ${res.warnings.length} != ${e.n_warnings}`);
+    assert.equal((res.notes || []).length, e.n_notes ?? 0,
+                 `not sayısı ${(res.notes || []).length} != ${e.n_notes ?? 0}`);
     for (const [crit, exp] of [["criterion1", e.criterion1],
                                ["criterion2", e.criterion2]]) {
       if (exp === null) { assert.equal(res[crit], null, crit); continue; }
@@ -175,6 +177,27 @@ check("report: türetimler ve referanslar", () => {
   const standalone = standaloneReportHTML(req, res, "/* css */");
   assert.ok(standalone.startsWith("<!DOCTYPE html>"));
   assert.ok(standalone.includes("report-paper"));
+});
+
+check("report: tek mikser 6 numune bölünmesi (TS 13515 Ek B1 (3))", () => {
+  const req = {
+    concrete_class: "C30/37", basis: "kup",
+    groups: [{ group_no: "1", values: [45.2, 43.8, 44.6, 46.1, 44.9, 43.5] }],
+    project: {},
+  };
+  const res = evaluate({ concreteClass: "C30/37", basis: "kup",
+                         groups: req.groups });
+  assert.equal(res.groups.length, 2, "6 numune 2 takıma bölünmeli");
+  assert.equal(res.groups[0].group_no, "1-A");
+  assert.equal(res.groups[1].group_no, "1-B");
+  assert.equal(res.n_valid, 2);
+  assert.equal(res.criterion1.threshold, 38, "n=2 -> fck+1");
+  assert.equal(res.notes.length, 1, "bölünme açıklaması olmalı");
+  const html = buildReportHTML(req, res);
+  assert.ok(html.includes("1-A") && html.includes("1-B"),
+            "takım etiketleri raporda yok");
+  assert.ok(html.includes("2022/07"), "Genelge 2022/07 atfı raporda yok");
+  assert.ok(html.includes("Ek B1 (3)"), "Ek B1 (3) açıklaması raporda yok");
 });
 
 check("report: geçersiz grup anlatımı", () => {

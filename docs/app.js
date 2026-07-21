@@ -230,7 +230,7 @@ function fillFromExtraction(d) {
   const groups = d.gruplar || [];
   if (!groups.length) addGroupRow();
   for (const g of groups) {
-    addGroupRow({ group_no: g.group_no, values: g.values || [] });
+    addGroupRows({ group_no: g.group_no, values: g.values || [] });
   }
 
   const notes = [...(d.okuma_notlari || [])];
@@ -269,6 +269,17 @@ function addGroupRow(data) {
   tr.querySelector("button").onclick = () => tr.remove();
   tb.appendChild(tr);
 }
+
+/* Bir grupta 3'ten fazla tekil sonuç varsa (tek mikserden 6 numune — TS 13515
+ * Ek B1 (3)) aynı grup numarasıyla 3'erli satırlara bölerek ekler; readGroups
+ * aynı numaralı satırları tek grupta birleştirir, takım ayrımını motor yapar. */
+function addGroupRows(data) {
+  const vals = data?.values || [];
+  if (vals.length <= 3) { addGroupRow(data); return; }
+  for (let i = 0; i < vals.length; i += 3) {
+    addGroupRow({ group_no: data.group_no, values: vals.slice(i, i + 3) });
+  }
+}
 $("btn-add-group").addEventListener("click", () => addGroupRow());
 $("btn-clear-groups").addEventListener("click", () => {
   $("groups-body").innerHTML = "";
@@ -276,7 +287,11 @@ $("btn-clear-groups").addEventListener("click", () => {
 });
 
 function readGroups() {
+  // Aynı grup/mikser numarasını taşıyan satırlar tek grupta birleştirilir:
+  // tek mikserden alınan 6 numune iki satıra yazılır, motor TS 13515
+  // Ek B1 (3) uyarınca takımlara ayırır.
   const groups = [];
+  const byNo = new Map();
   for (const tr of $("groups-body").children) {
     const vals = [".g-v1", ".g-v2", ".g-v3"]
       .map((c) => tr.querySelector(c).value.trim())
@@ -284,7 +299,14 @@ function readGroups() {
       .map(Number);
     const no = tr.querySelector(".g-no").value.trim();
     if (!vals.length && !no) continue;
-    groups.push({ group_no: no || String(groups.length + 1), values: vals });
+    const key = no || String(groups.length + 1);
+    if (byNo.has(key)) {
+      byNo.get(key).values.push(...vals);
+    } else {
+      const g = { group_no: key, values: vals };
+      byNo.set(key, g);
+      groups.push(g);
+    }
   }
   return groups;
 }
@@ -463,7 +485,7 @@ function openRecord(id) {
   $("f-volume").value = request.volume_m3 ?? "";
   $("groups-body").innerHTML = "";
   for (const g of request.groups) {
-    addGroupRow({ group_no: g.group_no, values: g.values });
+    addGroupRows({ group_no: g.group_no, values: g.values });
   }
   lastRequest = request;
   lastResult = result;

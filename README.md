@@ -25,11 +25,12 @@ hiçbir barındırma/veritabanı maliyeti yoktur.
   | Kontrol | Dayanak |
   |---|---|
   | Grup içi %15 tutarlılık, en düşük değerin atılması | TS 13515 Ek B1 |
+  | Tek beton yükü (tek mikser): 6 adet 28 günlük sonuç 3'erli 2 takıma ayrılır, n=2 ile değerlendirilir (8 numunenin 2'si 7 günlük — girilmez) | TS 13515/T1 Ek B1 (3) / ÇŞİDB Genelgesi 2022/07 |
   | 1. Kriter: n=2–4 → fcm ≥ fck+1; n≥5 → fcm ≥ fck+2 (n=1: uygulanamaz) | TS 500 m.3.4 (2002 tadili) / TS EN 206 |
   | 2. Kriter: her fci ≥ fck−4 (n=1: fci ≥ fck) | TS 500 m.3.4 / TS EN 206 |
   | Başlangıç imalatı bilgi kriteri: fcm ≥ fck+4 | TS EN 206 Çizelge 14 |
   | Numune yaşı (28 gün) kontrolü | TS EN 12390-3 |
-  | Numune alma planı bilgilendirmesi | TS 500 m.3.4 |
+  | Numune alma planı bilgilendirmesi (hacme göre asgari takım adedi; C55/67+ iki katı) | TS 13515/T1 Çizelge B1.1 |
   | Uygunsuzlukta karot önerileri | TS EN 13791 |
 
 - **Akademik biçimli rapor** (`docs/report.js`): tüm hesap adımları sayısal

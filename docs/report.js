@@ -13,9 +13,10 @@ export const REFERENCES = [
   "TS EN 206:2013+A2, “Beton — Özellik, Performans, İmalat ve Uygunluk”, " +
   "Türk Standardları Enstitüsü; madde 8.2.1 ve Çizelge 14 (basınç dayanımı " +
   "uygunluk kriterleri).",
-  "TS 13515:2021, “TS EN 206'nın Uygulamasına Yönelik Tamamlayıcı Standard”, " +
-  "Türk Standardları Enstitüsü; Ek B1 (deney sonuçlarının değerlendirilmesi, " +
-  "%15 kuralı).",
+  "TS 13515:2021 (+T1), “TS EN 206'nın Uygulamasına Yönelik Tamamlayıcı " +
+  "Standard”, Türk Standardları Enstitüsü; Ek B1 (numune takımı ve deney " +
+  "sonucu tanımı, tek beton yükünden asgari 2 takım kuralı, %15 kuralı), " +
+  "Çizelge B1.1 (numune alma planı) ve B1.3 (kabul kriterleri).",
   "TS EN 12350-1, “Taze Beton Deneyleri — Bölüm 1: Numune Alma”, TSE.",
   "TS EN 12390-2, “Sertleşmiş Beton Deneyleri — Bölüm 2: Dayanım Deneylerinde " +
   "Kullanılacak Numunelerin Hazırlanması ve Küre Tabi Tutulması”, TSE.",
@@ -27,10 +28,13 @@ export const REFERENCES = [
   "4708 sayılı Kanun kapsamında denetimi yürütülen yapılara ait taze betondan " +
   "numune alınması, deneylerinin yapılması, raporlanması süreçlerinin izlenmesi " +
   "ve denetlenmesine dair Tebliğ (R.G. 18.12.2018/30629; değişik 22.02.2024).",
+  "Çevre, Şehircilik ve İklim Değişikliği Bakanlığı Genelgesi 2022/07 " +
+  "(13.04.2022, sayı 3438325), “Taze Beton Dökümleri” — numune sayıları; tek " +
+  "beton yükü teslimatında toplam 8 numune (2 adet 7 günlük, 6 adet 28 günlük).",
 ];
 // Metin içi işaretler
 const R = { TS500: 1, EN206: 2, TS13515: 3, N12350: 4, N12390_2: 5,
-            N12390_3: 6, N13791: 7, KANUN: 8, TEBLIG: 9 };
+            N12390_3: 6, N13791: 7, KANUN: 8, TEBLIG: 9, GENELGE: 10 };
 const cite = (...nums) => `<span class="cite">[${nums.join(", ")}]</span>`;
 
 /* ---------------- yardımcılar ---------------- */
@@ -115,7 +119,13 @@ function methodSection(req, res) {
 
     <h3>2.3 Grup İçi Tutarlılık Kontrolü — TS 13515 Ek B1</h3>
     <p>Aynı harmandan (transmikserden) alınan numune takımı bir
-    <em>grup</em> oluşturur. Her j grubu için ${cite(R.TS13515)}:</p>
+    <em>grup</em> oluşturur; bir deney sonucu, bir beton yükünden alınan en az
+    üç numunelik takımın ortalamasıdır ${cite(R.TS13515)}. Şantiyeye aynı gün
+    içerisinde yalnızca <em>bir</em> beton yükü teslim edilmişse bu yükten
+    asgari 2 numune takımı oluşturulur (toplam 8 numune: 2 adet 7 günlük,
+    6 adet 28 günlük); 28 günlük sonuçlar 3'erli takımlara ayrılarak her takım
+    ayrı bir deney sonucu sayılır ${cite(R.TS13515, R.GENELGE)}. Her j grubu
+    için ${cite(R.TS13515)}:</p>
     <div class="rp-formula">
       <div class="eq"><span>${XBAR}<sub>j</sub> = (1/<i>k</i><sub>j</sub>) ·
         Σ <i>x</i><sub>j,i</sub></span><span class="eq-no">(1)</span></div>
@@ -226,9 +236,13 @@ function groupsSection(res) {
     <td>${g.discarded_value === null ? "—" : f1(g.discarded_value)}</td>
     <td><strong>${f1(g.mean_final)}</strong></td>
     <td>${g.valid ? "Geçerli" : "GEÇERSİZ"}</td></tr>`).join("");
+  const notes = (res.notes || []).map((n) =>
+    `<p class="rp-note"><em>Açıklama:</em> ${esc(n)}
+       ${cite(R.TS13515, R.GENELGE)}</p>`).join("");
   return `<section class="rp-sec">
     <h2>3. Grup İçi Tutarlılık Kontrolü ve Grup Sonuçları
         <span class="secref">(TS 13515 Ek B1 ${cite(R.TS13515)})</span></h2>
+    ${notes}
     <table class="rp-table">
       <tr><th>Grup</th><th>Tekil Sonuçlar<br>[MPa]</th><th>${XBAR}<sub>j</sub><br>[MPa]</th>
           <th><i>r</i><sub>j</sub><br>[MPa]</th><th>0,15·${XBAR}<sub>j</sub><br>[MPa]</th>

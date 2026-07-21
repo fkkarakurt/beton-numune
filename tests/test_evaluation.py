@@ -10,7 +10,8 @@ from datetime import date
 
 import pytest
 
-from app.evaluation import evaluate, evaluate_group, parse_concrete_class
+from app.evaluation import (evaluate, evaluate_group, expected_takim_count,
+                            parse_concrete_class)
 
 # Örnek PDF'teki tekil 28 günlük sonuçlar (MPa), grup -> [n1, n2, n3]
 PDF_GROUPS = {
@@ -173,6 +174,97 @@ def test_criterion2_catches_low_group():
     assert res.criterion2.passed is False
     assert res.verdict == "UYGUN DEĞİL"
     assert "3" in res.criterion2.detail
+
+
+# ---------------------------------------------------------------------------
+# Tek beton yükü (tek mikser) — TS 13515 Ek B1 (3) / ÇŞİDB Genelgesi 2022/07
+# Aynı gün tek mikser teslimatında 8 numune alınır: 2 adet 7 günlük (girilmez),
+# 6 adet 28 günlük; 28 günlükler 3'erli 2 takıma ayrılıp n=2 ile değerlendirilir.
+# ---------------------------------------------------------------------------
+def test_single_load_six_specimens_split_into_two_takim():
+    res = evaluate("C30/37", "kup",
+                   [{"group_no": "1",
+                     "values": [45.2, 43.8, 44.6, 46.1, 44.9, 43.5]}],
+                   volume_m3=20)
+    assert [g.group_no for g in res.groups] == ["1-A", "1-B"]
+    assert res.groups[0].values == [45.2, 43.8, 44.6]
+    assert res.groups[1].values == [46.1, 44.9, 43.5]
+    assert res.n_valid == 2
+    # n=2 -> fcm >= fck+1 ve her fci >= fck-4 (kup esası fck=37)
+    assert res.criterion1.applicable
+    assert res.criterion1.threshold == pytest.approx(38.0)
+    assert res.criterion2.threshold == pytest.approx(33.0)
+    assert res.verdict == "UYGUN"
+    assert any("Ek B1 (3)" in n for n in res.notes)
+    # 0-24 m³ için beklenen 2 takım sağlandı -> plan uyarısı yok
+    assert not any("Çizelge B1.1" in w for w in res.warnings)
+
+
+def test_single_load_split_ekb1_discard_in_second_takim():
+    # Takım B: 46.0/36.0/45.4 -> fark 10.0 > 0.15*42.5; 36.0 atılır -> 45.7
+    res = evaluate("C30/37", "kup",
+                   [{"group_no": "1",
+                     "values": [45.0, 44.2, 44.6, 46.0, 36.0, 45.4]}])
+    b = res.groups[1]
+    assert b.group_no == "1-B"
+    assert b.discarded_value == pytest.approx(36.0)
+    assert b.valid and b.mean_final == pytest.approx(45.7, abs=0.05)
+    assert res.n_valid == 2 and res.verdict == "UYGUN"
+
+
+def test_single_load_eight_values_warns_about_7day():
+    # 8 değer girilirse 2'si büyük olasılıkla 7 günlük kırımdır — bölünmez,
+    # uyarı verilir (Genelge 2022/07).
+    res = evaluate("C30/37", "kup",
+                   [{"group_no": "1",
+                     "values": [30.1, 31.5, 44.8, 45.2, 44.1, 45.6, 44.4, 45.0]}])
+    assert len(res.groups) == 1
+    assert any("7. günde" in w for w in res.warnings)
+
+
+def test_multi_group_six_values_not_split():
+    # Birden fazla mikser varsa tek beton yükü kuralı uygulanmaz.
+    res = evaluate("C30/37", "kup", [
+        {"group_no": "1", "values": [45.2, 43.8, 44.6, 46.1, 44.9, 43.5]},
+        {"group_no": "2", "values": [44.0, 44.5, 43.9]}])
+    assert [g.group_no for g in res.groups] == ["1", "2"]
+
+
+def test_nine_values_single_group_split_into_three():
+    res = evaluate("C30/37", "kup",
+                   [{"group_no": "1",
+                     "values": [45.2, 43.8, 44.6, 46.1, 44.9, 43.5,
+                                44.0, 44.4, 45.0]}])
+    assert [g.group_no for g in res.groups] == ["1-A", "1-B", "1-C"]
+    assert res.n_valid == 3
+
+
+# ---------------------------------------------------------------------------
+# TS 13515/T1 Çizelge B1.1 — numune alma planı
+# ---------------------------------------------------------------------------
+def test_b11_expected_counts():
+    assert expected_takim_count(20, 30) == 2
+    assert expected_takim_count(24, 30) == 2
+    assert expected_takim_count(25, 30) == 3
+    assert expected_takim_count(350, 30) == 8
+    assert expected_takim_count(600, 30) == 10
+    assert expected_takim_count(601, 30) == 11
+    assert expected_takim_count(1000, 30) == 12
+    assert expected_takim_count(20, 55) == 4   # C55/67+: iki katı (Ek B1 (5))
+
+
+def test_b11_warning_single_takim_small_volume():
+    res = evaluate("C30/37", "silindir",
+                   [{"group_no": "1", "values": [40.0, 41.0, 40.5]}],
+                   volume_m3=20)
+    assert any("Çizelge B1.1" in w and "2 numune takımı" in w
+               for w in res.warnings)
+
+
+def test_n1_note_b131():
+    res = evaluate("C30/37", "kup",
+                   [{"group_no": "1", "values": [53.7, 53.3, 51.6]}])
+    assert any("B1.3.1" in n for n in res.notes)
 
 
 # ---------------------------------------------------------------------------

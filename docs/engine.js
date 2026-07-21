@@ -10,6 +10,14 @@
  *      sonucu geçersizdir.
  *  [3] TS EN 206 Çizelge 14 (başlangıç imalatı, bilgi amaçlı): fcm >= fck+4.
  *  [4] TS EN 12390-3 — deney yaşı 28 gün.
+ *  [5] TS 13515:2021/T1 Ek B1 (2), (3) — bir deney sonucu, bir beton yükünden
+ *      (transmikser) alınan en az 3 numunelik takımın ortalamasıdır; aynı gün
+ *      yalnızca BİR beton yükü teslim edilmişse bu yükten asgari 2 numune
+ *      takımı oluşturulur. ÇŞİDB Genelgesi 2022/07: tek yükten toplam 8
+ *      numune (2 adet 7 günlük + 6 adet 28 günlük). Tek gruba girilen 6
+ *      (veya 3'ün katı) adet sonuç 3'erli takımlara ayrılır.
+ *  [6] TS 13515:2021/T1 Çizelge B1.1 — bir günde dökülen beton miktarına göre
+ *      asgari numune takımı adedi; Ek B1 (5): C55/67+ sınıflarda iki katı.
  *
  * Bu modül app/evaluation.py'nin birebir JavaScript karşılığıdır; sayısal
  * davranış tests/vectors.json üzerinden Python referans motoruyla çapraz
@@ -27,6 +35,22 @@ export const CONCRETE_CLASSES = {
 };
 
 export const EK_B1_RATIO = 0.15;
+
+// TS 13515:2021/T1 Çizelge B1.1 — [bir günde dökülen beton miktarı üst
+// sınırı (m³), oluşturulacak asgari numune takımı adedi] [6]
+export const CIZELGE_B11 = [[24, 2], [100, 3], [150, 4], [200, 5], [250, 6],
+                            [300, 7], [400, 8], [500, 9], [600, 10]];
+
+/** Çizelge B1.1'e göre asgari numune takımı (deney sonucu) adedi [6]. */
+export function expectedTakimCount(volumeM3, fckCylinder) {
+  let expected = null;
+  for (const [limit, count] of CIZELGE_B11) {
+    if (volumeM3 <= limit) { expected = count; break; }
+  }
+  if (expected === null) expected = 10 + Math.ceil((volumeM3 - 600) / 200);
+  if (fckCylinder >= 55) expected *= 2;
+  return expected;
+}
 
 const EPS = 1e-9;
 
@@ -154,13 +178,55 @@ export function evaluate(opts) {
     fcm: null, fci_min: null,
     criterion1: null, criterion2: null, ts500_conform: null,
     en206_initial: null,
-    age_days: null, warnings: [], recommendations: [], verdict: "",
+    age_days: null, warnings: [], notes: [], recommendations: [], verdict: "",
   };
 
-  (opts.groups || []).forEach((gd, i) => {
-    const gno = String(gd.group_no || i + 1);
-    res.groups.push(evaluateGroup(gno, gd.values || []));
-  });
+  let rawGroups = (opts.groups || []).map((gd, i) => [
+    String(gd.group_no || i + 1),
+    (gd.values || [])
+      .filter((v) => v !== null && v !== undefined && v !== "")
+      .map(Number),
+  ]);
+
+  // --- TS 13515 Ek B1 (3): tek beton yükü — numune takımlarına ayırma [5] ---
+  // Aynı gün yalnızca bir beton yükü (tek mikser) teslim edilmişse bu yükten
+  // asgari 2 numune takımı oluşturulur; 2022/07 Genelgesi'ne göre toplam 8
+  // numunenin 6 adedi 28 günlük kırıma aittir (2 takım x 3 numune).
+  if (rawGroups.length === 1) {
+    const [gno, vals] = rawGroups[0];
+    const k = vals.length;
+    if (k >= 6 && k % 3 === 0) {
+      const nTakim = k / 3;
+      rawGroups = [];
+      for (let j = 0; j < nTakim; j++) {
+        rawGroups.push([`${gno}-${String.fromCharCode(65 + j)}`,
+                        vals.slice(3 * j, 3 * j + 3)]);
+      }
+      const labels = rawGroups.map(([g]) => g).join(", ");
+      res.notes.push(
+        `Tek beton yükü (mikser ${gno}): TS 13515 Ek B1 (3) uyarınca, ` +
+        "şantiyeye aynı gün içerisinde yalnızca bir beton yükü teslim " +
+        "edilmişse bu yükten asgari 2 numune takımı oluşturulur. " +
+        `Girilen ${k} adet 28 günlük tekil sonuç, giriş sırasına göre ` +
+        `${nTakim} takıma (${labels}) ayrılmış ve her takım ayrı bir ` +
+        "deney sonucu olarak değerlendirilmiştir (ÇŞİDB Genelgesi " +
+        "2022/07: tek yükten toplam 8 numune — 2 adet 7 günlük, " +
+        "6 adet 28 günlük).");
+    } else if (k === 7 || k === 8) {
+      res.warnings.push(
+        `Tek gruba ${k} adet tekil sonuç girildi. Tek beton yükünden ` +
+        "alınan 8 numunenin 2 adedi 7. günde kırılır ve 28 günlük " +
+        "uygunluk değerlendirmesine katılmaz (ÇŞİDB Genelgesi " +
+        "2022/07). Yalnızca 6 adet 28 günlük sonucu girin; bu durumda " +
+        "sonuçlar TS 13515 Ek B1 (3) uyarınca 3'erli 2 takıma " +
+        "ayrılarak değerlendirilir. Mevcut giriş tek takım olarak " +
+        "işlendi — sonuç güvenilir olmayabilir.");
+    }
+  }
+
+  for (const [gno, vals] of rawGroups) {
+    res.groups.push(evaluateGroup(gno, vals));
+  }
 
   const valid = res.groups.filter((g) => g.valid);
   const invalid = res.groups.filter((g) => !g.valid);
@@ -227,6 +293,16 @@ export function evaluate(opts) {
   res.ts500_conform = Boolean(c1ok && ok2);
   res.verdict = res.ts500_conform ? "UYGUN" : "UYGUN DEĞİL";
 
+  if (n === 1) {
+    res.notes.push(
+      "Yalnızca 1 geçerli deney sonucu (numune takımı) mevcuttur. " +
+      "TS 13515 B1.3.1 uyarınca, Çizelge B1.1'deki numune alma planına " +
+      "göre aynı gün içinde en az 2 deney sonucu elde edilemezse, " +
+      "binanın ilgili kat betonu tamamlandıktan sonra elde edilen tüm " +
+      "deney sonuçları dikkate alınarak 1. kriterin sağlanıp " +
+      "sağlanmadığı ayrıca kontrol edilmelidir.");
+  }
+
   // --- TS EN 206 Çizelge 14 (bilgi amaçlı) [3] ---
   if (n >= 3) {
     const thrI = r1(fck + 4.0);
@@ -253,15 +329,21 @@ export function evaluate(opts) {
     }
   }
 
-  // --- Numune sayısı bilgilendirmesi (TS 500 m.3.4) [1] ---
+  // --- Numune sayısı bilgilendirmesi (TS 13515/T1 Çizelge B1.1) [6] ---
   const vol = Number(opts.volumeM3);
   if (vol > 0) {
-    const expected = Math.max(3, Math.ceil(vol / 100));
+    const expected = expectedTakimCount(vol, fckCyl);
+    const doubled = fckCyl >= 55
+      ? " (C55/67 ve üzeri sınıflarda sayılar iki katına çıkarılır — Ek B1 (5))"
+      : "";
     if (res.groups.length < expected) {
       res.warnings.push(
-        `${vol.toFixed(0)} m³ beton için TS 500 m.3.4 esasına göre en az ` +
-        `${expected} grup (her 100 m³ veya 450 m² döşeme için 1 grup, işte ` +
-        `en az 3 grup) beklenir; raporda ${res.groups.length} grup var.`);
+        `${vol.toFixed(0)} m³ beton için TS 13515/T1 Çizelge B1.1 ` +
+        `numune alma planına göre en az ${expected} numune takımı ` +
+        `(grup) oluşturulmalıdır${doubled}; raporda ${res.groups.length} ` +
+        "takım var. Döküm alanı (m²) kriteri ve numune alınan iki yük " +
+        "arasında en az 25 m³ bırakılması koşulu ayrıca kontrol " +
+        "edilmelidir.");
     }
   }
 
