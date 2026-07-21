@@ -3,7 +3,7 @@
 Yapı denetim ofisleri için beton deney raporu uygunluk değerlendirme sistemi —
 **tamamen ücretsiz, sunucusuz (statik) bir web uygulaması**. Tüm PDF okuma ve
 hesaplama kullanıcının tarayıcısında yapılır; hiçbir veri dışarı gönderilmez,
-hiçbir barındırma/veritabanı maliyeti yoktur (bkz. `DEPLOY.md`).
+hiçbir barındırma/veritabanı maliyeti yoktur.
 
 ## Özellikler
 
@@ -43,8 +43,6 @@ docs/            Yayınlanan statik uygulama (GitHub Pages: /docs)
   vendor/          pdf.js (Mozilla, Apache-2.0)
 app/             Python referans motoru (test oracle'ı — yayınlanmaz)
 tests/           Python testleri + Node çapraz doğrulama testleri
-assets/          Örnek rapor/Excel — KİŞİSEL VERİ içerdiğinden depoya dahil
-                 edilmez (.gitignore); yokluğunda ilgili testler atlanır
 ```
 
 ## Çalıştırma (yerel)
