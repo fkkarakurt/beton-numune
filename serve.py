@@ -1,11 +1,4 @@
 # -*- coding: utf-8 -*-
-"""Yerel geliştirme sunucusu — docs/ klasörünü doğru MIME türleriyle sunar.
-
-Windows'ta python -m http.server, MIME türlerini sistem kayıt defterinden
-okur ve .js/.mjs dosyalarını 'text/plain' olarak sunabilir; tarayıcılar ES
-modüllerinde MIME türünü katı denetlediğinden uygulama açılmaz. Bu betik
-türleri açıkça tanımlar. (GitHub/Cloudflare Pages'te bu sorun yoktur.)
-"""
 import http.server
 import os
 
