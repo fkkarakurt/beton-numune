@@ -98,7 +98,7 @@ export function linesFromTextContent(items) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Satırlardan numune gruplarını çıkarma                                */
+/* Satırlardan numune gruplarını çıkarma (metin katmanlı PDF)           */
 /* ------------------------------------------------------------------ */
 function parseSpecimenRows(allLines, notes, ocr = false) {
   const rows = [];
@@ -112,26 +112,14 @@ function parseSpecimenRows(allLines, notes, ocr = false) {
     const m = KALIP_RE.exec(line);
     if (!m) continue;
     // Gerçek kalıp numarasında numune sırası küçüktür (örn. 7-2); "10 - 40"
-    // gibi çökme sınıfı aralıkları böylece elenir.
+    // gibi aralık gösterimleri böylece elenir.
     if (Number(m[2]) > 12) continue;
     const tail = line.slice(m.index + m[0].length);
     const cands = [...tail.matchAll(candRe)]
       .map((c) => strength(numTr(c[1].replace(".", ","))))
       .filter((v) => v !== null);
     if (!cands.length) continue;
-    const group = m[1];
-    const kalip = `${m[1]}-${m[2]}`;
-    let slumpClass = null, slumpMm = null;
-    const sm = /\bS([1-5])\b(?:\s+(\d{1,3})\b)?/.exec(tail) ||
-               /\bS([1-5])\b(?:\s+(\d{1,3})\b)?/.exec(line.slice(0, m.index));
-    if (sm) {
-      slumpClass = "S" + sm[1];
-      if (sm[2] !== undefined) {
-        const v = Number(sm[2]);
-        if (v > 0) slumpMm = v <= 35 ? v * 10 : v; // cm -> mm dönüşümü
-      }
-    }
-    rows.push({ group, kalip, value: cands[0], slumpClass, slumpMm });
+    rows.push({ group: m[1], kalip: `${m[1]}-${m[2]}`, value: cands[0] });
   }
   if (!rows.length) {
     notes.push("Numune sonuç satırları okunamadı — değerleri elle girin.");
@@ -140,11 +128,296 @@ function parseSpecimenRows(allLines, notes, ocr = false) {
 }
 
 /* ------------------------------------------------------------------ */
+/* OCR kelime konumlarından tablo geri-çatımı                           */
+/* ------------------------------------------------------------------ */
+/*
+ * Satır metni yerine kelime sınır kutuları (bbox) kullanılır: "28 Günlük
+ * Numune" sütununun x-aralığı başlıktan (yoksa sütun konsensüsünden)
+ * belirlenir ve her kalıp satırında yalnız o aralığa düşen kelimeler değer
+ * sayılır. Böylece grup ortalaması / 7 günlük / ağırlık sütunları değer
+ * sanılmaz ve bozuk okunan hücreler ("47 A" = 47,4) kurtarılabilir.
+ */
+
+// OCR'ın sayısal bağlamda rakam yerine okuduğu karakterler
+const DIGIT_FIX = {
+  O: "0", o: "0", Q: "0", S: "5", s: "5", B: "8", A: "4", Z: "2", z: "2",
+  G: "6", I: "1", l: "1", "|": "1", "!": "1", "İ": "1", i: "1", "ı": "1",
+};
+const fixDigits = (t) => String(t).replace(/./g, (c) => DIGIT_FIX[c] ?? c);
+
+/** Sayısal sütun hücresini dayanım değerine çevirir (5–150 MPa, 1 ondalık). */
+export function normStrengthToken(txt) {
+  const raw = String(txt).trim();
+  // Tire/oran/saat içeren belirteçler değer değildir ("8-3" kalıp, "14:25",
+  // "C55/67"); tek rakamlık belirteçler de gürültüdür (mikser no, adet...).
+  if (/[-–—/:;]/.test(raw)) return null;
+  let t = fixDigits(raw).replace(/[^0-9.,]/g, "").replace(/^[.,]+|[.,]+$/g, "");
+  if ((t.match(/\d/g) || []).length < 2) return null;
+  let v = null;
+  const m = /^(\d{1,3})[.,](\d+)$/.exec(t);
+  if (m) {
+    // "45.44" gibi fazla haneli okumalarda ilk ondalık hane esas alınır
+    v = Number(m[1]) + Number(m[2][0]) / 10;
+  } else if (/^\d+$/.test(t)) {
+    if (t.length <= 2) v = Number(t);                       // ayraç kaybolmuş
+    else if (t.length <= 4) v = Number(t.slice(0, -1)) + Number(t.at(-1)) / 10;
+    else return null;
+  } else {
+    return null;
+  }
+  return v >= 5 && v <= 150 ? Math.round(v * 10) / 10 : null;
+}
+
+const KALIP_WORD_RE = /^(\d{1,3})[-–—](\d{1,2})$/;
+
+function kalipFromToken(txt) {
+  const t = fixDigits(String(txt).trim())
+    .replace(/\s+/g, "").replace(/^[^0-9]+|[^0-9]+$/g, "");
+  const m = KALIP_WORD_RE.exec(t);
+  if (!m || Number(m[2]) > 12 || Number(m[1]) < 1) return null;
+  return { group: m[1], spec: m[2] };
+}
+
+const cx = (w) => (w.bbox.x0 + w.bbox.x1) / 2;
+const cy = (b) => (b.y0 + b.y1) / 2;
+
+/** Tesseract satırlarını fiziksel tablo satırlarına birleştirir. */
+export function rowsFromOcrLines(lines) {
+  const usable = (lines || []).filter((l) => l && l.words && l.words.length &&
+                                             l.bbox);
+  const sorted = [...usable].sort((a, b) => cy(a.bbox) - cy(b.bbox));
+  const rows = [];
+  for (const ln of sorted) {
+    const last = rows[rows.length - 1];
+    if (last) {
+      const ha = last.bbox.y1 - last.bbox.y0, hb = ln.bbox.y1 - ln.bbox.y0;
+      const ov = Math.min(last.bbox.y1, ln.bbox.y1) -
+                 Math.max(last.bbox.y0, ln.bbox.y0);
+      // Tablo çizgisi gibi aşırı yüksek "satırlar" birleştirme zinciri
+      // kurmasın diye yükseklikler karşılaştırılabilir olmalı
+      if (ov > 0.55 * Math.min(ha, hb) &&
+          Math.min(ha, hb) / Math.max(ha, hb) > 0.35) {
+        last.words.push(...ln.words);
+        last.bbox = {
+          x0: Math.min(last.bbox.x0, ln.bbox.x0),
+          y0: Math.min(last.bbox.y0, ln.bbox.y0),
+          x1: Math.max(last.bbox.x1, ln.bbox.x1),
+          y1: Math.max(last.bbox.y1, ln.bbox.y1),
+        };
+        continue;
+      }
+    }
+    rows.push({
+      bbox: { ...ln.bbox },
+      words: ln.words.map((w) => ({ text: w.text, conf: w.conf ?? w.confidence,
+                                    bbox: w.bbox })),
+    });
+  }
+  for (const r of rows) r.words.sort((a, b) => a.bbox.x0 - b.bbox.x0);
+  return rows;
+}
+
+/** Satırdaki dayanım adaylarını (tekil + küçük boşlukla bitişik ikili) verir. */
+function strengthCandidates(row) {
+  const out = [];
+  const ws = row.words;
+  for (let i = 0; i < ws.length; i++) {
+    const v = normStrengthToken(ws[i].text);
+    if (v !== null) out.push({ value: v, cx: cx(ws[i]) });
+    const nxt = ws[i + 1];
+    if (nxt && nxt.bbox.x0 - ws[i].bbox.x1 <= 25) {
+      const vj = normStrengthToken(ws[i].text + nxt.text);
+      if (vj !== null && v === null) {
+        out.push({
+          value: vj,
+          cx: (ws[i].bbox.x0 + nxt.bbox.x1) / 2,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/** Seçilen sütun aralığındaki kelimeleri birleştirip değer okur. */
+function valueInColumn(row, x0, x1) {
+  const inCol = row.words.filter((w) => cx(w) >= x0 && cx(w) <= x1);
+  if (!inCol.length) return null;
+  return normStrengthToken(inCol.map((w) => w.text).join(""));
+}
+
+/** "28 Günlük" başlık adayları: [x0, x1] aralıkları. */
+function headerCandidates(rows) {
+  const out = [];
+  for (const row of rows) {
+    const joined = norm(row.words.map((w) => w.text).join(" "));
+    if (!joined.includes("GUN")) continue;
+    for (let i = 0; i < row.words.length; i++) {
+      if (fixDigits(row.words[i].text.trim()) !== "28") continue;
+      let x1 = row.words[i].bbox.x1;
+      const nxt = row.words[i + 1];
+      if (nxt && nxt.bbox.x0 - x1 <= 80) x1 = nxt.bbox.x1;
+      out.push({ x0: row.words[i].bbox.x0 - 20, x1: x1 + 20 });
+    }
+  }
+  return out;
+}
+
+/**
+ * Bir sayfanın OCR satırlarından numune satırlarını çıkarır.
+ * Dönen: [{group, kalip|null, value}] (y sırasında).
+ */
+export function parseSpecimenRowsFromOcr(pageLines, notes) {
+  const rows = rowsFromOcrLines(pageLines);
+  if (!rows.length) return [];
+  const pageW = Math.max(...rows.map((r) => r.bbox.x1));
+
+  // Kalıp deseni taşıyan satırlar
+  const kalipRows = [];
+  for (const row of rows) {
+    let hit = null;
+    for (let i = 0; i < row.words.length && !hit; i++) {
+      hit = kalipFromToken(row.words[i].text);
+      if (hit) hit.word = row.words[i];
+      if (!hit && row.words[i + 1] &&
+          row.words[i + 1].bbox.x0 - row.words[i].bbox.x1 <= 30) {
+        hit = kalipFromToken(row.words[i].text + row.words[i + 1].text);
+        if (hit) hit.word = row.words[i];
+      }
+    }
+    if (hit) kalipRows.push({ row, ...hit });
+  }
+  if (!kalipRows.length) return [];
+
+  // --- Değer sütununu belirle ---
+  // 1) Başlık adayları arasından, kalıp satırlarında en çok geçerli değer
+  //    barındıranı seç ("28 Günlük Numune" tekil sütunu, 1/3 satırda dolu
+  //    olan "28 Günlük Deney Sonuçları" ortalama sütununu böyle yener).
+  let col = null, bestCov = 0;
+  for (const h of headerCandidates(rows)) {
+    const cov = kalipRows.filter(
+      (k) => valueInColumn(k.row, h.x0, h.x1) !== null).length;
+    if (cov > bestCov) { bestCov = cov; col = h; }
+  }
+  if (!col || bestCov < Math.max(2, kalipRows.length * 0.4)) {
+    // 2) Başlık okunamadıysa sütun konsensüsü: aday x-merkezlerini kümele,
+    //    kapsaması yüksek kümelerden EN SAĞDAKİNİ al (28 günlük sütunu
+    //    raporlarda 7 günlük sütunun sağındadır).
+    const tol = Math.max(30, pageW * 0.015);
+    const clusters = [];
+    for (const k of kalipRows) {
+      for (const c of strengthCandidates(k.row)) {
+        const cl = clusters.find((q) => Math.abs(q.cx - c.cx) <= tol);
+        if (cl) {
+          cl.rows.add(k.row);
+          cl.cx = (cl.cx * cl.n + c.cx) / (cl.n + 1);
+          cl.n++;
+        } else {
+          clusters.push({ cx: c.cx, n: 1, rows: new Set([k.row]) });
+        }
+      }
+    }
+    if (!clusters.length) return [];
+    const maxCov = Math.max(...clusters.map((c) => c.rows.size));
+    if (maxCov < 2) return [];
+    const good = clusters.filter((c) => c.rows.size >= 0.6 * maxCov);
+    const pick = good.reduce((a, b) => (b.cx > a.cx ? b : a));
+    col = { x0: pick.cx - tol * 1.6, x1: pick.cx + tol * 1.6 };
+  }
+
+  // --- Kalıp satırlarından değerleri oku ---
+  let valued = [];
+  for (const k of kalipRows) {
+    const v = valueInColumn(k.row, col.x0, col.x1);
+    if (v !== null) valued.push({ k, value: v, y: cy(k.row.bbox) });
+  }
+  if (!valued.length) return [];
+
+  // Numune tablosu, düzenli aralıklı yoğun bir satır bloğudur. Sayfa altındaki
+  // kriter/sınıf tablolarından tesadüfen değer üreten tekil satırlar (örn.
+  // "2-4" satırındaki beton sınıfı "55"i) bu bloktan uzakta kalır: satırlar
+  // y-boşluğuna göre kümelenir, 3+ satırlık kümeler dışındakiler atılır.
+  valued.sort((a, b) => a.y - b.y);
+  if (valued.length > 1) {
+    const gaps = valued.slice(1).map((v, i) => v.y - valued[i].y)
+      .filter((g) => g > 0).sort((a, b) => a - b);
+    const medGap = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 60;
+    const cutoff = Math.max(200, medGap * 3.5);
+    const clusters = [[valued[0]]];
+    for (let i = 1; i < valued.length; i++) {
+      if (valued[i].y - valued[i - 1].y > cutoff) clusters.push([]);
+      clusters[clusters.length - 1].push(valued[i]);
+    }
+    const kept = clusters.filter((c) => c.length >= 3);
+    if (kept.length) valued = kept.flat();
+  }
+
+  const out = valued.map(({ k, value, y }) => ({
+    group: k.group, kalip: `${k.group}-${k.spec}`, value, y,
+  }));
+  const valuedSet = new Set(valued.map((v) => v.k));
+  const ys = valued.map((v) => v.y);
+  const rowGap = ys.length > 1
+    ? Math.max(40, (ys[ys.length - 1] - ys[0]) / (ys.length - 1) * 1.6)
+    : 80;
+  const spanY0 = ys[0] - rowGap, spanY1 = ys[ys.length - 1] + rowGap;
+
+  // Tablo aralığında kalıbı bulunup değeri okunamayanlar not edilir;
+  // sayfa altındaki kriter tablolarından gelen sahte kalıplar sessizce elenir.
+  for (const k of kalipRows) {
+    if (valuedSet.has(k)) continue;
+    const y = cy(k.row.bbox);
+    if (y >= spanY0 && y <= spanY1) {
+      notes.push(`Kalıp ${k.group}-${k.spec}: 28 günlük dayanım değeri ` +
+                 "okunamadı — belgeden bakarak elle girin.");
+    }
+  }
+
+  // --- Kalıp hücresi bozuk okunan satırları mikser sütunundan kurtar ---
+  // Mikser (grup) sütununun konumu, kalıp satırlarında grup numarasıyla
+  // birebir aynı metni taşıyan kelimelerin medyan x-merkezidir.
+  const mxs = [];
+  for (const { k } of valued) {
+    for (const w of k.row.words) {
+      if (w === k.word) continue;
+      if (fixDigits(w.text.trim()) === k.group && cx(w) < cx(k.word)) {
+        mxs.push(cx(w));
+      }
+    }
+  }
+  if (mxs.length >= 3) {
+    mxs.sort((a, b) => a - b);
+    const mcx = mxs[Math.floor(mxs.length / 2)];
+    const tol = Math.max(30, pageW * 0.015);
+    const kalipRowSet = new Set(kalipRows.map((k) => k.row));
+    for (const row of rows) {
+      if (kalipRowSet.has(row)) continue;
+      const y = cy(row.bbox);
+      if (y < spanY0 || y > spanY1) continue;
+      const v = valueInColumn(row, col.x0, col.x1);
+      if (v === null) continue;
+      const gw = row.words.find((w) => Math.abs(cx(w) - mcx) <= tol &&
+                                       /^\d{1,2}$/.test(fixDigits(w.text.trim())));
+      if (!gw) continue;
+      out.push({ group: fixDigits(gw.text.trim()), kalip: null, value: v, y });
+      notes.push(`Grup ${fixDigits(gw.text.trim())}: kalıp numarası bozuk ` +
+                 `okunan bir satırdan ${v.toFixed(1).replace(".", ",")} MPa ` +
+                 "değeri sütun konumuna göre alındı — belgeyle karşılaştırın.");
+    }
+  }
+
+  out.sort((a, b) => a.y - b.y);
+  return out.map(({ group, kalip, value }) => ({ group, kalip, value }));
+}
+
+/* ------------------------------------------------------------------ */
 /* Ana çözümleme                                                       */
 /* ------------------------------------------------------------------ */
 /**
  * pages: her sayfa için satır dizisi (string[][]).
  * opts.ocr: satırlar OCR'dan geldiyse true (toleranslar gevşetilir).
+ * opts.ocrPages: sayfa başına tesseract satırları ({words, bbox}) — verilirse
+ *   numune tablosu kelime konumlarından (bbox) geri çatılır; kelime yaklaşımı
+ *   sonuç veremezse satır-temelli çözümleyiciye düşülür.
  * Dönen nesne app tarafındaki form alanlarıyla eşleşir.
  */
 export function parseReportFromPages(pages, opts = {}) {
@@ -228,23 +501,24 @@ export function parseReportFromPages(pages, opts = {}) {
   }
 
   // Numune grupları
-  const rawRows = parseSpecimenRows(allLines, notes, ocr);
+  let rawRows = [];
+  if (opts.ocrPages) {
+    for (const pageLines of opts.ocrPages) {
+      rawRows.push(...parseSpecimenRowsFromOcr(pageLines, notes));
+    }
+  }
+  if (!rawRows.length) rawRows = parseSpecimenRows(allLines, notes, ocr);
   const groups = new Map();
   const seenKalip = new Set();
   for (const r of rawRows) {
-    if (seenKalip.has(r.kalip)) continue;
-    seenKalip.add(r.kalip);
+    if (r.kalip !== null && r.kalip !== undefined) {
+      if (seenKalip.has(r.kalip)) continue;
+      seenKalip.add(r.kalip);
+    }
     if (!groups.has(r.group)) {
-      groups.set(r.group, {
-        group_no: r.group, values: [], slump_class: null, slump_measured_mm: null,
-      });
+      groups.set(r.group, { group_no: r.group, values: [] });
     }
-    const g = groups.get(r.group);
-    g.values.push(r.value);
-    if (r.slumpClass && !g.slump_class) g.slump_class = r.slumpClass;
-    if (r.slumpMm !== null && g.slump_measured_mm === null) {
-      g.slump_measured_mm = r.slumpMm;
-    }
+    groups.get(r.group).values.push(r.value);
   }
   rep.gruplar = [...groups.values()];
   if (rep.gruplar.length) {

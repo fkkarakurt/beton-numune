@@ -9,9 +9,7 @@
  *      en düşük değer atılır, kalanla tekrar kontrol edilir; yine aşarsa grup
  *      sonucu geçersizdir.
  *  [3] TS EN 206 Çizelge 14 (başlangıç imalatı, bilgi amaçlı): fcm >= fck+4.
- *  [4] TS EN 206 çökme sınıfları: S1 10-40, S2 50-90, S3 100-150, S4 160-210,
- *      S5 >= 220 mm (sapma ±10 mm).
- *  [5] TS EN 12390-3 — deney yaşı 28 gün.
+ *  [4] TS EN 12390-3 — deney yaşı 28 gün.
  *
  * Bu modül app/evaluation.py'nin birebir JavaScript karşılığıdır; sayısal
  * davranış tests/vectors.json üzerinden Python referans motoruyla çapraz
@@ -28,10 +26,6 @@ export const CONCRETE_CLASSES = {
   "C100/115": [100, 115],
 };
 
-export const SLUMP_CLASSES = {
-  S1: [10, 40], S2: [50, 90], S3: [100, 150], S4: [160, 210], S5: [220, null],
-};
-export const SLUMP_TOLERANCE_MM = 10;
 export const EK_B1_RATIO = 0.15;
 
 const EPS = 1e-9;
@@ -128,32 +122,6 @@ export function evaluateGroup(groupNo, values) {
   return g;
 }
 
-/** TS EN 206 çökme sınıfı kontrolü [4]. */
-export function evaluateSlump(groupNo, declaredClass, measuredMm) {
-  const s = {
-    group_no: String(groupNo),
-    declared_class: String(declaredClass).toUpperCase().trim(),
-    measured_mm: Number(measuredMm),
-    lower_mm: null, upper_mm: null, passed: null, detail: "",
-  };
-  const cls = SLUMP_CLASSES[s.declared_class];
-  if (!cls) {
-    s.detail = `Bilinmeyen çökme sınıfı: ${declaredClass}`;
-    return s;
-  }
-  const [lo, hi] = cls;
-  s.lower_mm = lo - SLUMP_TOLERANCE_MM;
-  s.upper_mm = hi === null ? null : hi + SLUMP_TOLERANCE_MM;
-  const okLow = s.measured_mm >= s.lower_mm;
-  const okHigh = s.upper_mm === null ? true : s.measured_mm <= s.upper_mm;
-  s.passed = okLow && okHigh;
-  const rng = hi !== null ? `${lo}-${hi} mm` : `>= ${lo} mm`;
-  s.detail = `${s.declared_class} sınıfı (${rng}, sapma ±${SLUMP_TOLERANCE_MM} mm) ` +
-             `için ölçülen ${Math.round(s.measured_mm)} mm ` +
-             (s.passed ? "uygun." : "uygun değil.");
-  return s;
-}
-
 function isoToDate(s) {
   if (!s) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s));
@@ -164,8 +132,7 @@ function isoToDate(s) {
 /**
  * Ana değerlendirme.
  * options: { concreteClass, basis: 'silindir'|'kup', groups: [{group_no,
- *   values, slump_class?, slump_measured_mm?}], volumeM3?, samplingDate?,
- *   testDate? }  (tarihler ISO 'YYYY-MM-DD')
+ *   values}], volumeM3?, samplingDate?, testDate? }  (tarihler ISO 'YYYY-MM-DD')
  */
 export function evaluate(opts) {
   const cls = parseConcreteClass(opts.concreteClass);
@@ -186,18 +153,13 @@ export function evaluate(opts) {
     groups: [], n_valid: 0, n_invalid: 0,
     fcm: null, fci_min: null,
     criterion1: null, criterion2: null, ts500_conform: null,
-    en206_initial: null, slump_results: [],
+    en206_initial: null,
     age_days: null, warnings: [], recommendations: [], verdict: "",
   };
 
   (opts.groups || []).forEach((gd, i) => {
     const gno = String(gd.group_no || i + 1);
     res.groups.push(evaluateGroup(gno, gd.values || []));
-    if (gd.slump_class && gd.slump_measured_mm !== null &&
-        gd.slump_measured_mm !== undefined && gd.slump_measured_mm !== "") {
-      res.slump_results.push(evaluateSlump(gno, gd.slump_class,
-                                           Number(gd.slump_measured_mm)));
-    }
   });
 
   const valid = res.groups.filter((g) => g.valid);
@@ -278,7 +240,7 @@ export function evaluate(opts) {
     };
   }
 
-  // --- Numune yaşı [5] ---
+  // --- Numune yaşı [4] ---
   const d0 = isoToDate(opts.samplingDate);
   const d1 = isoToDate(opts.testDate);
   if (d0 !== null && d1 !== null) {
@@ -300,12 +262,6 @@ export function evaluate(opts) {
         `${vol.toFixed(0)} m³ beton için TS 500 m.3.4 esasına göre en az ` +
         `${expected} grup (her 100 m³ veya 450 m² döşeme için 1 grup, işte ` +
         `en az 3 grup) beklenir; raporda ${res.groups.length} grup var.`);
-    }
-  }
-
-  for (const s of res.slump_results) {
-    if (s.passed === false) {
-      res.warnings.push(`Grup ${s.group_no}: çökme (slump) ${s.detail}`);
     }
   }
 

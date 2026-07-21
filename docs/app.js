@@ -118,14 +118,16 @@ async function extractFromPdf(file, setStatus) {
   // Metin katmanı yok ya da yetersiz (CamScanner vb. görüntü tabanlı PDF)
   setStatus(`${file.name}: metin katmanı bulunamadı — OCR ile okunuyor…`);
   const worker = await getOcrWorker(setStatus);
-  const ocrPages = [];
+  const ocrPages = [], ocrRows = [];
   for (let p = 1; p <= doc.numPages; p++) {
     setStatus(`${file.name}: sayfa ${p}/${doc.numPages} OCR ile okunuyor… ` +
               "(sayfa başına 5-20 sn)");
     const page = await doc.getPage(p);
-    ocrPages.push(await ocrCanvas(worker, await renderPdfPageToCanvas(page)));
+    const res = await ocrCanvas(worker, await renderPdfPageToCanvas(page));
+    ocrPages.push(res.lines);
+    ocrRows.push(res.rows);
   }
-  const ocrRep = parseReportFromPages(ocrPages, { ocr: true });
+  const ocrRep = parseReportFromPages(ocrPages, { ocr: true, ocrPages: ocrRows });
   // Metin katmanı başlık verebilmişse (ör. yalnız filigran değilse) boş
   // alanları oradan tamamla
   if (textRep) {
@@ -143,13 +145,15 @@ async function extractFromPdf(file, setStatus) {
 /* Fotoğraflar: hepsi tek raporun sayfaları kabul edilir, birlikte OCR'lanır. */
 async function extractFromImages(files, setStatus) {
   const worker = await getOcrWorker(setStatus);
-  const pages = [];
+  const pages = [], rows = [];
   for (let i = 0; i < files.length; i++) {
     setStatus(`Fotoğraf ${i + 1}/${files.length} OCR ile okunuyor… ` +
               "(fotoğraf başına 5-20 sn)");
-    pages.push(await ocrCanvas(worker, await imageFileToCanvas(files[i])));
+    const res = await ocrCanvas(worker, await imageFileToCanvas(files[i]));
+    pages.push(res.lines);
+    rows.push(res.rows);
   }
-  return parseReportFromPages(pages, { ocr: true });
+  return parseReportFromPages(pages, { ocr: true, ocrPages: rows });
 }
 
 function mergeReports(reps, notes) {
@@ -226,10 +230,7 @@ function fillFromExtraction(d) {
   const groups = d.gruplar || [];
   if (!groups.length) addGroupRow();
   for (const g of groups) {
-    addGroupRow({
-      group_no: g.group_no, values: g.values || [],
-      slump_class: g.slump_class || "", slump_mm: g.slump_measured_mm,
-    });
+    addGroupRow({ group_no: g.group_no, values: g.values || [] });
   }
 
   const notes = [...(d.okuma_notlari || [])];
@@ -259,18 +260,11 @@ function addGroupRow(data) {
   const tr = document.createElement("tr");
   const no = data?.group_no ?? String(tb.children.length + 1);
   const v = data?.values || [];
-  const sm = data?.slump_mm ?? "";
   tr.innerHTML = `
     <td><input class="g-no" value="${escapeHtml(String(no))}"></td>
     <td><input class="g-v1" type="number" step="0.1" value="${v[0] ?? ""}"></td>
     <td><input class="g-v2" type="number" step="0.1" value="${v[1] ?? ""}"></td>
     <td><input class="g-v3" type="number" step="0.1" value="${v[2] ?? ""}"></td>
-    <td><select class="g-sc">
-        <option value=""></option>
-        ${["S1", "S2", "S3", "S4", "S5"].map((s) =>
-          `<option ${data?.slump_class === s ? "selected" : ""}>${s}</option>`).join("")}
-      </select></td>
-    <td><input class="g-sm" type="number" step="1" value="${sm === null ? "" : sm}"></td>
     <td><button class="btn small" title="Satırı sil">✕</button></td>`;
   tr.querySelector("button").onclick = () => tr.remove();
   tb.appendChild(tr);
@@ -290,11 +284,7 @@ function readGroups() {
       .map(Number);
     const no = tr.querySelector(".g-no").value.trim();
     if (!vals.length && !no) continue;
-    const g = { group_no: no || String(groups.length + 1), values: vals };
-    const sc = tr.querySelector(".g-sc").value;
-    const smv = tr.querySelector(".g-sm").value.trim();
-    if (sc && smv !== "") { g.slump_class = sc; g.slump_measured_mm = Number(smv); }
-    groups.push(g);
+    groups.push({ group_no: no || String(groups.length + 1), values: vals });
   }
   return groups;
 }
@@ -473,8 +463,7 @@ function openRecord(id) {
   $("f-volume").value = request.volume_m3 ?? "";
   $("groups-body").innerHTML = "";
   for (const g of request.groups) {
-    addGroupRow({ group_no: g.group_no, values: g.values,
-                  slump_class: g.slump_class, slump_mm: g.slump_measured_mm });
+    addGroupRow({ group_no: g.group_no, values: g.values });
   }
   lastRequest = request;
   lastResult = result;

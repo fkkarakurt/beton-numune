@@ -13,8 +13,13 @@ hiçbir barındırma/veritabanı maliyeti yoktur.
     (Tesseract.js + Türkçe dil verisi, WebAssembly): metin katmanı yoksa
     otomatik devreye girer; sayfa başına 5-20 sn sürer ve sonuçlar mutlaka
     belgeyle karşılaştırılmalıdır (arayüz bunu zorunlu kılar).
-  - Çıkarılanlar: rapor bilgileri, grup/numune sonuçları, çökme değerleri,
-    silindir/küp eşdeğerlik esası.
+  - Çıkarılanlar: rapor bilgileri, grup/numune sonuçları, silindir/küp
+    eşdeğerlik esası.
+  - OCR'da numune tablosu **kelime konumlarından (bbox) geri çatılır**:
+    "28 Günlük" sütunu başlıktan (okunamazsa sütun konsensüsünden) bulunur,
+    her satırda yalnız o sütuna düşen hücre değer sayılır; bozuk okunan
+    hücreler ("47 A" = 47,4) ve kalıp numarası bozulan satırlar mikser
+    sütunu üzerinden kurtarılır.
 - **Deterministik değerlendirme motoru** (`docs/engine.js`):
 
   | Kontrol | Dayanak |
@@ -23,7 +28,6 @@ hiçbir barındırma/veritabanı maliyeti yoktur.
   | 1. Kriter: n=2–4 → fcm ≥ fck+1; n≥5 → fcm ≥ fck+2 (n=1: uygulanamaz) | TS 500 m.3.4 (2002 tadili) / TS EN 206 |
   | 2. Kriter: her fci ≥ fck−4 (n=1: fci ≥ fck) | TS 500 m.3.4 / TS EN 206 |
   | Başlangıç imalatı bilgi kriteri: fcm ≥ fck+4 | TS EN 206 Çizelge 14 |
-  | Çökme sınıfları S1–S5 (±10 mm) | TS EN 206 |
   | Numune yaşı (28 gün) kontrolü | TS EN 12390-3 |
   | Numune alma planı bilgilendirmesi | TS 500 m.3.4 |
   | Uygunsuzlukta karot önerileri | TS EN 13791 |
@@ -60,8 +64,8 @@ gerekir; internet bağlantısı gerekmez).
 ## Testler
 
 ```
-python -m pytest tests -q        # Python referans motoru (28 test)
-node tests/js/run_tests.mjs      # JS motoru + PDF okuma + rapor (18 test)
+python -m pytest tests -q        # Python referans motoru (25 test)
+node tests/js/run_tests.mjs      # JS motoru + PDF okuma + rapor (17 test)
 node tests/js/ocr_test.mjs       # OCR hattı uçtan uca (npm install gerektirir)
 ```
 

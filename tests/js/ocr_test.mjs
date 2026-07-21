@@ -23,7 +23,7 @@ if (!existsSync(P1)) {
   process.exit(0);
 }
 
-const { linesFromOcrData } = await import(
+const { linesFromOcrData, structuredFromOcrData } = await import(
   new URL("file://" + join(root, "docs", "ocr.js").replace(/\\/g, "/")));
 const { parseReportFromPages } = await import(
   new URL("file://" + join(root, "docs", "pdfread.js").replace(/\\/g, "/")));
@@ -47,15 +47,16 @@ await worker.setParameters({
   preserve_interword_spaces: "1",
 });
 
-const pages = [];
+const pages = [], rows = [];
 for (const p of [P1, P2].filter(existsSync)) {
   console.log("Sayfa okunuyor:", p);
   const { data } = await worker.recognize(p);
   pages.push(linesFromOcrData(data));
+  rows.push(structuredFromOcrData(data));
 }
 await worker.terminate();
 
-const rep = parseReportFromPages(pages, { ocr: true });
+const rep = parseReportFromPages(pages, { ocr: true, ocrPages: rows });
 const got = Object.fromEntries(rep.gruplar.map((g) => [g.group_no, g.values]));
 
 let groupsFound = 0, valuesMatched = 0, totalExpected = 0;
@@ -75,14 +76,14 @@ console.log("rapor_no:", rep.rapor_no, "| beton_sinifi:", rep.beton_sinifi,
             "| esas:", rep.sonuc_esasi);
 
 let failed = 0;
-if (groupsFound < 7) {
+if (groupsFound < 10) {
   failed++;
-  console.error(`✗ OCR en az 7 grup bulmalıydı (bulunan: ${groupsFound})`);
+  console.error(`✗ OCR 10 grubun tümünü bulmalıydı (bulunan: ${groupsFound})`);
 }
-if (valuesMatched < Math.ceil(totalExpected * 2 / 3)) {
+if (valuesMatched < totalExpected - 1) {
   failed++;
-  console.error(`✗ OCR değerlerin en az 2/3'ünü doğru okumalıydı ` +
-                `(${valuesMatched}/${totalExpected})`);
+  console.error(`✗ OCR değerlerin en az ${totalExpected - 1} tanesini doğru ` +
+                `okumalıydı (${valuesMatched}/${totalExpected})`);
 }
 if (!rep.okuma_notlari.some((n) => n.includes("OCR"))) {
   failed++;

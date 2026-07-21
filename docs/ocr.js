@@ -29,6 +29,22 @@ export function linesFromOcrData(data) {
   return lines;
 }
 
+/**
+ * Tesseract sonucu -> kelime konumlu satırlar (tablo geri-çatımı için).
+ * Düşük güvenli satırlar da korunur: bozuk okunan tablo hücreleri tam da
+ * bunların içindedir ve sütun konumu sayesinde yine değerlendirilebilir.
+ */
+export function structuredFromOcrData(data) {
+  const out = [];
+  for (const ln of data.lines || []) {
+    const words = (ln.words || [])
+      .filter((w) => w.text && w.text.trim() && w.bbox)
+      .map((w) => ({ text: w.text.trim(), conf: w.confidence, bbox: w.bbox }));
+    if (words.length && ln.bbox) out.push({ bbox: ln.bbox, words });
+  }
+  return out;
+}
+
 /* ------------------------------------------------------------------ */
 /* Tarayıcı tarafı                                                     */
 /* ------------------------------------------------------------------ */
@@ -84,17 +100,82 @@ export async function getOcrWorker(onStatus) {
   return workerPromise;
 }
 
-/** Tuval üzerinde gri tonlama + kontrast germe (kötü çekimler için). */
+/**
+ * Aydınlatma düzleştirme: kağıt arka planı blok-maksimum + bulanıklaştırma
+ * ile kestirilir, her piksel yerel arka planına oranlanır. Gölgeli/eğik
+ * ışıklı telefon çekimlerinde tablo bölgesini okunur hale getirir; düzgün
+ * taramalarda arka plan zaten tekdüze olduğundan işlem atlanır.
+ */
+function flattenIllumination(gray, w, h) {
+  const K = 24; // blok boyutu (px) — yazı kalınlığından büyük, gölgeden küçük
+  const bw = Math.ceil(w / K), bh = Math.ceil(h / K);
+  const bg = new Float32Array(bw * bh);
+  for (let by = 0; by < bh; by++) {
+    for (let bx = 0; bx < bw; bx++) {
+      let mx = 0;
+      const yEnd = Math.min((by + 1) * K, h), xEnd = Math.min((bx + 1) * K, w);
+      for (let y = by * K; y < yEnd; y++) {
+        const off = y * w;
+        for (let x = bx * K; x < xEnd; x++) {
+          if (gray[off + x] > mx) mx = gray[off + x];
+        }
+      }
+      bg[by * bw + bx] = mx;
+    }
+  }
+  let lo = 255, hi = 0;
+  for (const v of bg) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  if (hi - lo < 24) return; // tekdüze arka plan (tarama/PDF) — gerek yok
+  // 3x3 ortalama (2 geçiş) ile arka plan yumuşatılır
+  const tmp = new Float32Array(bg.length);
+  for (let pass = 0; pass < 2; pass++) {
+    for (let by = 0; by < bh; by++) {
+      for (let bx = 0; bx < bw; bx++) {
+        let s = 0, n = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const yy = by + dy, xx = bx + dx;
+            if (yy >= 0 && yy < bh && xx >= 0 && xx < bw) {
+              s += bg[yy * bw + xx]; n++;
+            }
+          }
+        }
+        tmp[by * bw + bx] = s / n;
+      }
+    }
+    bg.set(tmp);
+  }
+  for (let y = 0; y < h; y++) {
+    // Çift doğrusal örnekleme için blok koordinatları
+    const fy = Math.min(Math.max(y / K - 0.5, 0), bh - 1);
+    const y0 = Math.floor(fy), y1 = Math.min(y0 + 1, bh - 1), wy = fy - y0;
+    const off = y * w;
+    for (let x = 0; x < w; x++) {
+      const fx = Math.min(Math.max(x / K - 0.5, 0), bw - 1);
+      const x0 = Math.floor(fx), x1 = Math.min(x0 + 1, bw - 1), wx = fx - x0;
+      const b = (bg[y0 * bw + x0] * (1 - wx) + bg[y0 * bw + x1] * wx) * (1 - wy) +
+                (bg[y1 * bw + x0] * (1 - wx) + bg[y1 * bw + x1] * wx) * wy;
+      const v = gray[off + x] * 235 / Math.max(b, 64);
+      gray[off + x] = v > 255 ? 255 : v | 0;
+    }
+  }
+}
+
+/** Tuval üzerinde gri tonlama + aydınlatma düzleştirme + kontrast germe. */
 export function preprocessCanvas(canvas) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const d = img.data;
-  // Gri tonlama + min/maks belirleme (uçlardaki %1'i yok say)
+  const w = canvas.width, h = canvas.height;
+  const gray = new Uint8ClampedArray(w * h);
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+    gray[p] = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
+  }
+  flattenIllumination(gray, w, h);
   const hist = new Uint32Array(256);
-  for (let i = 0; i < d.length; i += 4) {
-    const g = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) | 0;
-    d[i] = d[i + 1] = d[i + 2] = g;
-    hist[g]++;
+  for (let p = 0; p < gray.length; p++) hist[gray[p]]++;
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+    d[i] = d[i + 1] = d[i + 2] = gray[p];
   }
   const total = canvas.width * canvas.height;
   const cut = total * 0.01;
@@ -144,8 +225,12 @@ export async function imageFileToCanvas(file) {
   return canvas;
 }
 
-/** Tuvali OCR'dan geçirip metin satırlarını döndürür. */
+/**
+ * Tuvali OCR'dan geçirir.
+ * Dönen: { lines: string[] (başlık alanları için temiz metin),
+ *          rows: [{bbox, words}] (numune tablosunun kelime konumlu hali) }.
+ */
 export async function ocrCanvas(worker, canvas) {
   const { data } = await worker.recognize(preprocessCanvas(canvas));
-  return linesFromOcrData(data);
+  return { lines: linesFromOcrData(data), rows: structuredFromOcrData(data) };
 }

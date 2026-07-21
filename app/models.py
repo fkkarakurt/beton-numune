@@ -14,8 +14,6 @@ class GroupInput(BaseModel):
     group_no: str = Field(..., description="Mikser / grup numarası")
     values: list[float] = Field(default_factory=list,
                                 description="28 günlük basınç dayanımları (MPa)")
-    slump_class: Optional[str] = Field(None, description="Beyan edilen çökme sınıfı (S1..S5)")
-    slump_measured_mm: Optional[float] = Field(None, description="Ölçülen çökme (mm)")
 
 
 class ProjectInfo(BaseModel):
@@ -54,12 +52,6 @@ class ExtractedGroup(BaseModel):
     values: list[float] = Field(
         ..., description="Bu grubun 28 günlük basınç dayanımı değerleri (MPa), "
                          "raporda yazıldığı gibi")
-    slump_class: Optional[str] = Field(
-        None, description="Beyan edilen çökme sınıfı (S1..S5), varsa")
-    slump_measured_cm: Optional[float] = Field(
-        None, description="Ölçülen çökme değeri raporda cm ise cm olarak; yoksa null")
-    slump_measured_mm: Optional[float] = Field(
-        None, description="Ölçülen çökme değeri raporda mm ise mm olarak; yoksa null")
 
 
 class ExtractedReport(BaseModel):

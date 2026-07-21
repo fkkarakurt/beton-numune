@@ -62,7 +62,6 @@ _LABEL_RE = re.compile("|".join(re.escape(l) for l in
 
 _DATE_RE = re.compile(r"(\d{1,2})[./](\d{1,2})[./](\d{4})")
 _KALIP_RE = re.compile(r"^\s*(\d+)\s*-\s*(\d+)\s*$")
-_SLUMP_CLASS_RE = re.compile(r"^\s*(S[1-5])\s*$")
 
 
 def _find_field(text: str, norm: str, *labels: str) -> Optional[str]:
@@ -117,12 +116,9 @@ def _strength(cell: Optional[str]) -> Optional[float]:
 # --------------------------------------------------------------------------
 # Tablo tabanlı numune okuma
 # --------------------------------------------------------------------------
-def _header_columns(table: list[list]) -> tuple[Optional[int], Optional[int],
-                                                Optional[int], bool, int]:
-    """(28g sütunu, beyan slump sütunu, ölçülen slump sütunu,
-        ölçülen cm mi, başlık satırı sonu)"""
-    col28 = col_beyan = col_olc = None
-    olc_cm = True
+def _header_columns(table: list[list]) -> tuple[Optional[int], int]:
+    """(28g sütunu, başlık satırı sonu)"""
+    col28 = None
     header_end = 0
     for ri, row in enumerate(table):
         for ci, cell in enumerate(row):
@@ -133,31 +129,24 @@ def _header_columns(table: list[list]) -> tuple[Optional[int], Optional[int],
                 if "SONUC" not in n and col28 is None:
                     col28 = ci
                 header_end = max(header_end, ri + 1)
-            if "SLUMP" in n or "COKME" in n:
-                if "BEYAN" in n and col_beyan is None:
-                    col_beyan = ci
-                if ("OLCULEN" in n or "OLC" in n) and col_olc is None:
-                    col_olc = ci
-                    olc_cm = "MM" not in n.replace("/", "").replace("(", "")
-                header_end = max(header_end, ri + 1)
         if col28 is not None and ri >= header_end + 1:
             break
-    return col28, col_beyan, col_olc, olc_cm, header_end
+    return col28, header_end
 
 
 def _parse_tables(pdf, notes: list[str]):
-    """[(grup_no, kalıp, dayanım, beyan_slump, ölçülen_mm), ...]
+    """[(grup_no, kalıp, dayanım), ...]
 
     Bir tablo yalnızca en az bir geçerli dayanım değeri üretirse numune
-    tablosu sayılır; kriter/çökme referans tabloları (içlerindeki "2 - 4",
-    "50 - 90" gibi hücreler kalıp desenine benzese de) hiçbir dayanım değeri
-    üretemediği için kendiliğinden elenir.
+    tablosu sayılır; kriter referans tabloları (içlerindeki "2 - 4" gibi
+    hücreler kalıp desenine benzese de) hiçbir dayanım değeri üretemediği
+    için kendiliğinden elenir.
     """
     rows_out = []
     used_fallback = False
     for page in pdf.pages:
         for table in page.extract_tables():
-            col28, col_beyan, col_olc, olc_cm, hdr_end = _header_columns(table)
+            col28, hdr_end = _header_columns(table)
             table_rows = []          # bu tablodan çıkan geçerli satırlar
             missing: list[str] = []  # kalıbı bulunup değeri okunamayanlar
             for row in table[hdr_end:]:
@@ -188,23 +177,7 @@ def _parse_tables(pdf, notes: list[str]):
                 if value is None:
                     missing.append(kalip)
                     continue
-                beyan = None
-                if col_beyan is not None and col_beyan < len(cells):
-                    m = _SLUMP_CLASS_RE.match(cells[col_beyan])
-                    if m:
-                        beyan = m.group(1)
-                if beyan is None:
-                    for c in cells:
-                        m = _SLUMP_CLASS_RE.match(c)
-                        if m:
-                            beyan = m.group(1)
-                            break
-                olc_mm = None
-                if col_olc is not None and col_olc < len(cells):
-                    v = _to_float(cells[col_olc])
-                    if v is not None and v > 0:
-                        olc_mm = v * 10 if (olc_cm and v <= 35) else v
-                table_rows.append((group, kalip, value, beyan, olc_mm))
+                table_rows.append((group, kalip, value))
                 used_fallback = used_fallback or row_fallback
             if not table_rows:
                 continue  # numune tablosu değil — notsuz atla
@@ -229,7 +202,7 @@ def _parse_text_rows(pdf, notes: list[str]):
             if not m:
                 continue
             # Gerçek kalıp numarasında numune sırası küçüktür (örn. 7-2);
-            # "10 - 40" gibi çökme aralıkları elenir.
+            # "10 - 40" gibi aralık gösterimleri elenir.
             if int(m.group(2)) > 12:
                 continue
             tail = line[m.end():]
@@ -238,12 +211,7 @@ def _parse_text_rows(pdf, notes: list[str]):
                     if v is not None and v >= 5.0]
             if not vals:
                 continue
-            group, kalip = m.group(1), f"{m.group(1)}-{m.group(2)}"
-            slump = None
-            sm = re.search(r"\b(S[1-5])\b", tail)
-            if sm:
-                slump = sm.group(1)
-            rows_out.append((group, kalip, vals[0], slump, None))
+            rows_out.append((m.group(1), f"{m.group(1)}-{m.group(2)}", vals[0]))
     if rows_out:
         notes.append("Numune tablosu satır bazlı yedek yöntemle okundu — "
                      "değerleri belgeyle mutlaka karşılaştırın.")
@@ -353,7 +321,7 @@ def _parse_pdf(data: bytes, notes: list[str]) -> ExtractedReport:
 
         groups: dict[str, ExtractedGroup] = {}
         seen_kalip: set[str] = set()
-        for group, kalip, value, beyan, olc_mm in raw_rows:
+        for group, kalip, value in raw_rows:
             if kalip in seen_kalip:
                 continue
             seen_kalip.add(kalip)
@@ -362,10 +330,6 @@ def _parse_pdf(data: bytes, notes: list[str]) -> ExtractedReport:
                 g = ExtractedGroup(group_no=group, values=[])
                 groups[group] = g
             g.values.append(value)
-            if beyan and not g.slump_class:
-                g.slump_class = beyan
-            if olc_mm is not None and g.slump_measured_mm is None:
-                g.slump_measured_mm = olc_mm
         rep.gruplar = list(groups.values())
         rep.okuma_notlari = notes
         return rep

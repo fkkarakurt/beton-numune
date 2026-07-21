@@ -65,12 +65,6 @@ def test_basis_detected_from_footnote(report):
     assert report.sonuc_esasi == "silindir"
 
 
-def test_slump(report):
-    g1 = next(g for g in report.gruplar if g.group_no == "1")
-    assert g1.slump_class == "S4"
-    assert g1.slump_measured_mm == pytest.approx(150)  # 15 cm -> 150 mm
-
-
 def test_non_pdf_rejected():
     with pytest.raises(ExtractionError):
         extract_report([("foto.jpg", b"\xff\xd8\xff")])

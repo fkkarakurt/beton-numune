@@ -14,8 +14,6 @@ Dayanaklar:
   kalan sonuçlarla yeniden kontrol edilir; yine aşıyorsa grup sonucu geçersiz.
 - TS EN 206 Çizelge 14 (bilgi amaçlı ek değerlendirme):
   başlangıç imalatı: fcm >= fck + 4 ; her fci >= fck - 4.
-- Çökme (slump) sınıfları TS EN 206: S1 10-40, S2 50-90, S3 100-150,
-  S4 160-210, S5 >= 220 mm (sapma ±10 mm).
 
 Tüm hesaplar deterministiktir; hiçbir değerlendirme LLM'e bırakılmaz.
 Karşılaştırmalar 0,1 MPa hassasiyetine yuvarlanarak yapılır (laboratuvar
@@ -47,16 +45,6 @@ CONCRETE_CLASSES: dict[str, tuple[int, int]] = {
     "C90/105": (90, 105),
     "C100/115": (100, 115),
 }
-
-# TS EN 206 çökme sınıfları [mm] ve sınıf sınırlarında izin verilen sapma
-SLUMP_CLASSES: dict[str, tuple[int, Optional[int]]] = {
-    "S1": (10, 40),
-    "S2": (50, 90),
-    "S3": (100, 150),
-    "S4": (160, 210),
-    "S5": (220, None),
-}
-SLUMP_TOLERANCE_MM = 10
 
 EK_B1_RATIO = 0.15  # TS 13515 Ek B1 %15 kuralı
 
@@ -186,17 +174,6 @@ class CriterionResult:
 
 
 @dataclass
-class SlumpResult:
-    group_no: str
-    declared_class: str
-    measured_mm: float
-    lower_mm: Optional[float] = None
-    upper_mm: Optional[float] = None
-    passed: Optional[bool] = None
-    detail: str = ""
-
-
-@dataclass
 class EvaluationResult:
     concrete_class: str
     basis: str                       # 'silindir' | 'kup'
@@ -212,34 +189,10 @@ class EvaluationResult:
     criterion2: Optional[CriterionResult] = None
     ts500_conform: Optional[bool] = None
     en206_initial: Optional[CriterionResult] = None   # bilgi amaçlı
-    slump_results: list[SlumpResult] = field(default_factory=list)
     age_days: Optional[int] = None
     warnings: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
     verdict: str = ""                # 'UYGUN' | 'UYGUN DEĞİL' | 'DEĞERLENDİRİLEMEDİ'
-
-
-def evaluate_slump(group_no: str, declared_class: str,
-                   measured_mm: float) -> SlumpResult:
-    s = SlumpResult(group_no=str(group_no),
-                    declared_class=str(declared_class).upper().strip(),
-                    measured_mm=float(measured_mm))
-    cls = SLUMP_CLASSES.get(s.declared_class)
-    if cls is None:
-        s.passed = None
-        s.detail = f"Bilinmeyen çökme sınıfı: {declared_class!r}"
-        return s
-    lo, hi = cls
-    s.lower_mm = lo - SLUMP_TOLERANCE_MM
-    s.upper_mm = (hi + SLUMP_TOLERANCE_MM) if hi is not None else None
-    ok_low = s.measured_mm >= s.lower_mm
-    ok_high = True if s.upper_mm is None else s.measured_mm <= s.upper_mm
-    s.passed = ok_low and ok_high
-    rng = f"{lo}-{hi} mm" if hi is not None else f">= {lo} mm"
-    s.detail = (f"{s.declared_class} sınıfı ({rng}, sapma ±{SLUMP_TOLERANCE_MM} mm) "
-                f"için ölçülen {s.measured_mm:.0f} mm "
-                + ("uygun." if s.passed else "uygun değil."))
-    return s
 
 
 def evaluate(
@@ -254,8 +207,7 @@ def evaluate(
     """
     Ana değerlendirme.
 
-    groups: [{"group_no": "1", "values": [44.8, 40.0, 45.8],
-              "slump_class": "S4", "slump_measured_mm": 150}, ...]
+    groups: [{"group_no": "1", "values": [44.8, 40.0, 45.8]}, ...]
     basis:  'silindir' -> sonuçlar 150x300 silindir eşdeğeri, fck = silindir fck
             'kup'      -> sonuçlar 150 mm küp eşdeğeri,       fck = küp fck
     """
@@ -276,12 +228,7 @@ def evaluate(
 
     for i, gdict in enumerate(groups, start=1):
         gno = str(gdict.get("group_no") or i)
-        g = evaluate_group(gno, gdict.get("values") or [])
-        res.groups.append(g)
-        sl_cls = gdict.get("slump_class")
-        sl_mm = gdict.get("slump_measured_mm")
-        if sl_cls and sl_mm is not None:
-            res.slump_results.append(evaluate_slump(gno, sl_cls, float(sl_mm)))
+        res.groups.append(evaluate_group(gno, gdict.get("values") or []))
 
     valid = [g for g in res.groups if g.valid]
     invalid = [g for g in res.groups if not g.valid]
@@ -373,11 +320,6 @@ def evaluate(
                 f"{volume_m3:.0f} m³ beton için TS 500 m.3.4 esasına göre en az "
                 f"{expected} grup (her 100 m³ veya 450 m² döşeme için 1 grup, "
                 f"işte en az 3 grup) beklenir; raporda {len(res.groups)} grup var.")
-
-    # --- Çökme uygunsuzlukları ---
-    for s in res.slump_results:
-        if s.passed is False:
-            res.warnings.append(f"Grup {s.group_no}: çökme (slump) {s.detail}")
 
     # --- Öneriler ---
     if not res.ts500_conform:

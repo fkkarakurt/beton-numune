@@ -12,7 +12,7 @@ export const REFERENCES = [
   "tarihli tadil ile TS EN 206 denetim kriterlerine atıf.",
   "TS EN 206:2013+A2, “Beton — Özellik, Performans, İmalat ve Uygunluk”, " +
   "Türk Standardları Enstitüsü; madde 8.2.1 ve Çizelge 14 (basınç dayanımı " +
-  "uygunluk kriterleri), çökme (kıvam) sınıfları.",
+  "uygunluk kriterleri).",
   "TS 13515:2021, “TS EN 206'nın Uygulamasına Yönelik Tamamlayıcı Standard”, " +
   "Türk Standardları Enstitüsü; Ek B1 (deney sonuçlarının değerlendirilmesi, " +
   "%15 kuralı).",
@@ -40,8 +40,6 @@ const dash = (s) => (s === null || s === undefined || s === "" ? "—" : esc(s))
 /** Türkçe ondalık gösterim: 46 -> "46,0" */
 const f1 = (x) => (x === null || x === undefined ? "—"
   : x.toFixed(1).replace(".", ","));
-const f0 = (x) => (x === null || x === undefined ? "—"
-  : String(Math.round(x)));
 const joinVals = (vals, sep = "; ") => vals.map(f1).join(sep);
 const trDate = (iso) => {
   if (!iso) return "—";
@@ -315,28 +313,6 @@ function criteriaSection(res) {
   return html;
 }
 
-/* ---------------- bölüm 5: kıvam ---------------- */
-function slumpSection(res) {
-  if (!res.slump_results.length) return "";
-  const rows = res.slump_results.map((s) => `<tr>
-    <td>${esc(s.group_no)}</td><td>${esc(s.declared_class)}</td>
-    <td>${f0(s.measured_mm)}</td>
-    <td>${s.upper_mm !== null ? `${s.lower_mm} – ${s.upper_mm}` : `≥ ${s.lower_mm}`}</td>
-    <td>${s.passed === null ? "—" : s.passed ? "Uygun" : "UYGUN DEĞİL"}</td>
-    </tr>`).join("");
-  return `<section class="rp-sec">
-    <h2>5. Kıvam (Çökme) Kontrolü
-        <span class="secref">(TS EN 206 ${cite(R.EN206)})</span></h2>
-    <p>Beyan edilen çökme sınıfının sınır değerlerine ±10 mm sapma payı
-    uygulanmıştır.</p>
-    <table class="rp-table">
-      <tr><th>Grup</th><th>Beyan Sınıfı</th><th>Ölçülen [mm]</th>
-          <th>Kabul Aralığı [mm]</th><th>Durum</th></tr>
-      ${rows}
-    </table>
-  </section>`;
-}
-
 /* ---------------- sonuç + uyarılar + kaynaklar ---------------- */
 function conclusionSections(req, res, sectionNo) {
   let no = sectionNo;
@@ -380,7 +356,6 @@ export function buildReportHTML(req, res, generatedAt = new Date()) {
   const p = req.project || {};
   const dt = generatedAt.toLocaleDateString("tr-TR") + " " +
     generatedAt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-  let secNo = res.slump_results.length ? 6 : 5;
 
   return `
   <div class="rp-head">
@@ -392,8 +367,7 @@ export function buildReportHTML(req, res, generatedAt = new Date()) {
   ${methodSection(req, res)}
   ${groupsSection(res)}
   ${criteriaSection(res)}
-  ${slumpSection(res)}
-  ${conclusionSections(req, res, secNo)}
+  ${conclusionSections(req, res, 5)}
   <div class="rp-sign">
     <div class="box"><strong>Değerlendiren</strong>
       <div class="line">${dash(p.degerlendiren)}</div></div>

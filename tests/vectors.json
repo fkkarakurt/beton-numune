@@ -9,14 +9,14 @@
      "group_no": "1",
      "values": [
       44.8,
-      40.0,
+      40,
       45.8
      ]
     },
     {
      "group_no": "2",
      "values": [
-      48.0,
+      48,
       49.3,
       47.9
      ]
@@ -42,7 +42,7 @@
      "values": [
       45.6,
       46.4,
-      43.0
+      43
      ]
     },
     {
@@ -66,7 +66,7 @@
      "values": [
       47.2,
       50.3,
-      47.0
+      47
      ]
     },
     {
@@ -92,7 +92,7 @@
   },
   "expected": {
    "verdict": "UYGUN",
-   "fck": 35.0,
+   "fck": 35,
    "fcm": 46.4,
    "fci_min": 42.4,
    "n_valid": 10,
@@ -101,16 +101,15 @@
    "criterion1": {
     "applicable": true,
     "passed": true,
-    "threshold": 37.0
+    "threshold": 37
    },
    "criterion2": {
     "applicable": true,
     "passed": true,
-    "threshold": 31.0
+    "threshold": 31
    },
    "en206_passed": true,
    "n_warnings": 0,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "1",
@@ -145,15 +144,15 @@
      "mean_final": 46.4,
      "discarded_value": null,
      "mean_initial": 46.4,
-     "range_initial": 2.0,
-     "limit_initial": 7.0
+     "range_initial": 2,
+     "limit_initial": 7
     },
     {
      "group_no": "5",
      "valid": true,
-     "mean_final": 45.0,
+     "mean_final": 45,
      "discarded_value": null,
-     "mean_initial": 45.0,
+     "mean_initial": 45,
      "range_initial": 3.4,
      "limit_initial": 6.8
     },
@@ -189,7 +188,7 @@
      "valid": true,
      "mean_final": 50.1,
      "discarded_value": 43.8,
-     "mean_initial": 48.0,
+     "mean_initial": 48,
      "range_initial": 8.4,
      "limit_initial": 7.2
     },
@@ -200,7 +199,7 @@
      "discarded_value": null,
      "mean_initial": 46.8,
      "range_initial": 4.6,
-     "limit_initial": 7.0
+     "limit_initial": 7
     }
    ]
   }
@@ -215,14 +214,14 @@
      "group_no": "1",
      "values": [
       44.8,
-      40.0,
+      40,
       45.8
      ]
     },
     {
      "group_no": "2",
      "values": [
-      48.0,
+      48,
       49.3,
       47.9
      ]
@@ -248,7 +247,7 @@
      "values": [
       45.6,
       46.4,
-      43.0
+      43
      ]
     },
     {
@@ -272,7 +271,7 @@
      "values": [
       47.2,
       50.3,
-      47.0
+      47
      ]
     },
     {
@@ -295,7 +294,7 @@
   },
   "expected": {
    "verdict": "UYGUN DEĞİL",
-   "fck": 45.0,
+   "fck": 45,
    "fcm": 46.4,
    "fci_min": 42.4,
    "n_valid": 10,
@@ -304,16 +303,15 @@
    "criterion1": {
     "applicable": true,
     "passed": false,
-    "threshold": 47.0
+    "threshold": 47
    },
    "criterion2": {
     "applicable": true,
     "passed": true,
-    "threshold": 41.0
+    "threshold": 41
    },
    "en206_passed": false,
    "n_warnings": 0,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "1",
@@ -348,15 +346,15 @@
      "mean_final": 46.4,
      "discarded_value": null,
      "mean_initial": 46.4,
-     "range_initial": 2.0,
-     "limit_initial": 7.0
+     "range_initial": 2,
+     "limit_initial": 7
     },
     {
      "group_no": "5",
      "valid": true,
-     "mean_final": 45.0,
+     "mean_final": 45,
      "discarded_value": null,
-     "mean_initial": 45.0,
+     "mean_initial": 45,
      "range_initial": 3.4,
      "limit_initial": 6.8
     },
@@ -392,7 +390,7 @@
      "valid": true,
      "mean_final": 50.1,
      "discarded_value": 43.8,
-     "mean_initial": 48.0,
+     "mean_initial": 48,
      "range_initial": 8.4,
      "limit_initial": 7.2
     },
@@ -403,7 +401,7 @@
      "discarded_value": null,
      "mean_initial": 46.8,
      "range_initial": 4.6,
-     "limit_initial": 7.0
+     "limit_initial": 7
     }
    ]
   }
@@ -426,7 +424,7 @@
   },
   "expected": {
    "verdict": "UYGUN",
-   "fck": 37.0,
+   "fck": 37,
    "fcm": 52.9,
    "fci_min": 52.9,
    "n_valid": 1,
@@ -440,11 +438,10 @@
    "criterion2": {
     "applicable": true,
     "passed": true,
-    "threshold": 37.0
+    "threshold": 37
    },
    "en206_passed": null,
    "n_warnings": 0,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "1",
@@ -467,8 +464,8 @@
     {
      "group_no": "1",
      "values": [
-      35.0,
-      36.0,
+      35,
+      36,
       36.5
      ]
     }
@@ -476,7 +473,7 @@
   },
   "expected": {
    "verdict": "UYGUN DEĞİL",
-   "fck": 37.0,
+   "fck": 37,
    "fcm": 35.8,
    "fci_min": 35.8,
    "n_valid": 1,
@@ -490,11 +487,10 @@
    "criterion2": {
     "applicable": true,
     "passed": false,
-    "threshold": 37.0
+    "threshold": 37
    },
    "en206_passed": null,
    "n_warnings": 0,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "1",
@@ -518,7 +514,7 @@
      "group_no": "1",
      "values": [
       31.5,
-      31.0,
+      31,
       31.3
      ]
     },
@@ -526,7 +522,7 @@
      "group_no": "2",
      "values": [
       31.5,
-      31.0,
+      31,
       31.3
      ]
     },
@@ -534,7 +530,7 @@
      "group_no": "3",
      "values": [
       31.5,
-      31.0,
+      31,
       31.3
      ]
     }
@@ -542,7 +538,7 @@
   },
   "expected": {
    "verdict": "UYGUN",
-   "fck": 25.0,
+   "fck": 25,
    "fcm": 31.3,
    "fci_min": 31.3,
    "n_valid": 3,
@@ -551,16 +547,15 @@
    "criterion1": {
     "applicable": true,
     "passed": true,
-    "threshold": 26.0
+    "threshold": 26
    },
    "criterion2": {
     "applicable": true,
     "passed": true,
-    "threshold": 21.0
+    "threshold": 21
    },
    "en206_passed": true,
    "n_warnings": 0,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "1",
@@ -642,7 +637,7 @@
   },
   "expected": {
    "verdict": "UYGUN DEĞİL",
-   "fck": 25.0,
+   "fck": 25,
    "fcm": 26.5,
    "fci_min": 26.5,
    "n_valid": 5,
@@ -651,16 +646,15 @@
    "criterion1": {
     "applicable": true,
     "passed": false,
-    "threshold": 27.0
+    "threshold": 27
    },
    "criterion2": {
     "applicable": true,
     "passed": true,
-    "threshold": 21.0
+    "threshold": 21
    },
    "en206_passed": false,
    "n_warnings": 0,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "1",
@@ -669,7 +663,7 @@
      "discarded_value": null,
      "mean_initial": 26.5,
      "range_initial": 0.2,
-     "limit_initial": 4.0
+     "limit_initial": 4
     },
     {
      "group_no": "2",
@@ -678,7 +672,7 @@
      "discarded_value": null,
      "mean_initial": 26.5,
      "range_initial": 0.2,
-     "limit_initial": 4.0
+     "limit_initial": 4
     },
     {
      "group_no": "3",
@@ -687,7 +681,7 @@
      "discarded_value": null,
      "mean_initial": 26.5,
      "range_initial": 0.2,
-     "limit_initial": 4.0
+     "limit_initial": 4
     },
     {
      "group_no": "4",
@@ -696,7 +690,7 @@
      "discarded_value": null,
      "mean_initial": 26.5,
      "range_initial": 0.2,
-     "limit_initial": 4.0
+     "limit_initial": 4
     },
     {
      "group_no": "5",
@@ -705,7 +699,7 @@
      "discarded_value": null,
      "mean_initial": 26.5,
      "range_initial": 0.2,
-     "limit_initial": 4.0
+     "limit_initial": 4
     }
    ]
   }
@@ -719,17 +713,17 @@
     {
      "group_no": "1",
      "values": [
-      40.0,
-      41.0,
+      40,
+      41,
       40.5
      ]
     },
     {
      "group_no": "2",
      "values": [
-      40.0,
+      40,
       40.5,
-      41.0
+      41
      ]
     },
     {
@@ -744,7 +738,7 @@
   },
   "expected": {
    "verdict": "UYGUN DEĞİL",
-   "fck": 35.0,
+   "fck": 35,
    "fcm": 37.1,
    "fci_min": 30.4,
    "n_valid": 3,
@@ -753,16 +747,15 @@
    "criterion1": {
     "applicable": true,
     "passed": true,
-    "threshold": 36.0
+    "threshold": 36
    },
    "criterion2": {
     "applicable": true,
     "passed": false,
-    "threshold": 31.0
+    "threshold": 31
    },
    "en206_passed": false,
    "n_warnings": 0,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "1",
@@ -770,7 +763,7 @@
      "mean_final": 40.5,
      "discarded_value": null,
      "mean_initial": 40.5,
-     "range_initial": 1.0,
+     "range_initial": 1,
      "limit_initial": 6.1
     },
     {
@@ -779,7 +772,7 @@
      "mean_final": 40.5,
      "discarded_value": null,
      "mean_initial": 40.5,
-     "range_initial": 1.0,
+     "range_initial": 1,
      "limit_initial": 6.1
     },
     {
@@ -812,7 +805,7 @@
   },
   "expected": {
    "verdict": "UYGUN",
-   "fck": 35.0,
+   "fck": 35,
    "fcm": 47.2,
    "fci_min": 47.2,
    "n_valid": 1,
@@ -826,11 +819,10 @@
    "criterion2": {
     "applicable": true,
     "passed": true,
-    "threshold": 35.0
+    "threshold": 35
    },
    "en206_passed": null,
    "n_warnings": 0,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "7",
@@ -853,16 +845,16 @@
     {
      "group_no": "x",
      "values": [
-      50.0,
-      30.0,
-      20.0
+      50,
+      30,
+      20
      ]
     }
    ]
   },
   "expected": {
    "verdict": "DEĞERLENDİRİLEMEDİ",
-   "fck": 30.0,
+   "fck": 30,
    "fcm": null,
    "fci_min": null,
    "n_valid": 0,
@@ -872,16 +864,15 @@
    "criterion2": null,
    "en206_passed": null,
    "n_warnings": 2,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "x",
      "valid": false,
      "mean_final": null,
-     "discarded_value": 20.0,
+     "discarded_value": 20,
      "mean_initial": 33.3,
-     "range_initial": 30.0,
-     "limit_initial": 5.0
+     "range_initial": 30,
+     "limit_initial": 5
     }
    ]
   }
@@ -895,15 +886,15 @@
     {
      "group_no": "x",
      "values": [
-      50.0,
-      30.0
+      50,
+      30
      ]
     }
    ]
   },
   "expected": {
    "verdict": "DEĞERLENDİRİLEMEDİ",
-   "fck": 30.0,
+   "fck": 30,
    "fcm": null,
    "fci_min": null,
    "n_valid": 0,
@@ -913,16 +904,15 @@
    "criterion2": null,
    "en206_passed": null,
    "n_warnings": 2,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "x",
      "valid": false,
      "mean_final": null,
      "discarded_value": null,
-     "mean_initial": 40.0,
-     "range_initial": 20.0,
-     "limit_initial": 6.0
+     "mean_initial": 40,
+     "range_initial": 20,
+     "limit_initial": 6
     }
    ]
   }
@@ -936,23 +926,23 @@
     {
      "group_no": "1",
      "values": [
-      40.0,
+      40,
       40.5,
-      41.0
+      41
      ]
     },
     {
      "group_no": "2",
      "values": [
-      50.0,
-      30.0
+      50,
+      30
      ]
     }
    ]
   },
   "expected": {
    "verdict": "UYGUN",
-   "fck": 30.0,
+   "fck": 30,
    "fcm": 40.5,
    "fci_min": 40.5,
    "n_valid": 1,
@@ -966,11 +956,10 @@
    "criterion2": {
     "applicable": true,
     "passed": true,
-    "threshold": 30.0
+    "threshold": 30
    },
    "en206_passed": null,
    "n_warnings": 1,
-   "slump_passed": [],
    "groups": [
     {
      "group_no": "1",
@@ -978,7 +967,7 @@
      "mean_final": 40.5,
      "discarded_value": null,
      "mean_initial": 40.5,
-     "range_initial": 1.0,
+     "range_initial": 1,
      "limit_initial": 6.1
     },
     {
@@ -986,9 +975,9 @@
      "valid": false,
      "mean_final": null,
      "discarded_value": null,
-     "mean_initial": 40.0,
-     "range_initial": 20.0,
-     "limit_initial": 6.0
+     "mean_initial": 40,
+     "range_initial": 20,
+     "limit_initial": 6
     }
    ]
   }
@@ -1002,12 +991,10 @@
     {
      "group_no": "1",
      "values": [
-      40.0,
-      41.0,
+      40,
+      41,
       40.5
-     ],
-     "slump_class": "S4",
-     "slump_measured_mm": 120
+     ]
     }
    ],
    "volume_m3": 350,
@@ -1016,7 +1003,7 @@
   },
   "expected": {
    "verdict": "UYGUN",
-   "fck": 30.0,
+   "fck": 30,
    "fcm": 40.5,
    "fci_min": 40.5,
    "n_valid": 1,
@@ -1030,13 +1017,10 @@
    "criterion2": {
     "applicable": true,
     "passed": true,
-    "threshold": 30.0
+    "threshold": 30
    },
    "en206_passed": null,
-   "n_warnings": 3,
-   "slump_passed": [
-    false
-   ],
+   "n_warnings": 2,
    "groups": [
     {
      "group_no": "1",
@@ -1044,7 +1028,7 @@
      "mean_final": 40.5,
      "discarded_value": null,
      "mean_initial": 40.5,
-     "range_initial": 1.0,
+     "range_initial": 1,
      "limit_initial": 6.1
     }
    ]

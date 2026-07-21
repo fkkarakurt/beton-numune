@@ -10,8 +10,7 @@ from datetime import date
 
 import pytest
 
-from app.evaluation import (evaluate, evaluate_group, evaluate_slump,
-                            parse_concrete_class)
+from app.evaluation import evaluate, evaluate_group, parse_concrete_class
 
 # Örnek PDF'teki tekil 28 günlük sonuçlar (MPa), grup -> [n1, n2, n3]
 PDF_GROUPS = {
@@ -211,23 +210,6 @@ def test_age_warning():
                    test_date=date(2023, 5, 10))
     assert res.age_days == 24
     assert any("Numune yaşı" in w for w in res.warnings)
-
-
-def test_slump_evaluation():
-    ok = evaluate_slump("1", "S4", 150)   # 160-210 ±10 -> 150 uygun
-    assert ok.passed
-    bad = evaluate_slump("1", "S4", 120)
-    assert bad.passed is False
-    s5 = evaluate_slump("1", "S5", 240)   # >=220, üst sınır yok
-    assert s5.passed
-
-
-def test_slump_warning_in_result():
-    res = evaluate("C30/37", "silindir",
-                   [{"group_no": "1", "values": [40.0, 41.0, 40.5],
-                     "slump_class": "S4", "slump_measured_mm": 120}])
-    assert any("çökme" in w for w in res.warnings)
-    assert res.verdict == "UYGUN"  # çökme uygunsuzluğu dayanım kararını değiştirmez
 
 
 def test_en206_initial_info():

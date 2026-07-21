@@ -69,8 +69,6 @@ for (const v of vectors) {
     }
     const en206 = res.en206_initial === null ? null : res.en206_initial.passed;
     assert.equal(en206, e.en206_passed, "en206");
-    assert.deepEqual(res.slump_results.map((s) => s.passed), e.slump_passed,
-                     "slump");
     assert.equal(res.groups.length, e.groups.length, "grup sayısı");
     e.groups.forEach((eg, i) => {
       const g = res.groups[i];
@@ -135,11 +133,6 @@ if (!existsSync(samplePdf)) {
     assert.equal(rep.alinis_tarihi, "2023-04-16");
     assert.equal(rep.deney_tarihi, "2023-05-14");
     assert.equal(rep.sonuc_esasi, "silindir");
-  });
-  check("pdf: slump", () => {
-    const g1 = rep.gruplar.find((g) => g.group_no === "1");
-    assert.equal(g1.slump_class, "S4");
-    assert.equal(g1.slump_measured_mm, 150);
   });
 } catch (e) {
   failed++;
